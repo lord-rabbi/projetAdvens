@@ -1,7 +1,7 @@
 <?php
 require_once 'config/session.php';
 require_once 'config/database.php';
-$erreur='';
+$erreur = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
@@ -11,19 +11,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $utilisateur = $stmt->fetch();
 
-if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
-    $_SESSION['id_utilisateur'] = $utilisateur['id_utilisateur'];
-    $_SESSION['nom'] = $utilisateur['nom'];
-    $_SESSION['prenom'] = $utilisateur['prenom'];
-    $_SESSION['id_role'] = $utilisateur['id_role'];
-    $_SESSION['autoriser'] = $utilisateur['autoriser'];
+    if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
+        $_SESSION['id_utilisateur'] = $utilisateur['id_utilisateur'];
+        $_SESSION['nom'] = $utilisateur['nom'];
+        $_SESSION['prenom'] = $utilisateur['prenom'];
+        $_SESSION['id_role'] = $utilisateur['id_role'];
+        $_SESSION['autoriser'] = $utilisateur['autoriser'];
+        $_SESSION['id_departement'] = $utilisateur['id_departement'];
 
-    header('Location: dashboard.php');
+        header('Location: dashboard.php');
         exit();
-} else {
-    $erreur = 'Email ou mot de passe incorrect';
-}
-
+    } else {
+        $erreur = 'Email ou mot de passe incorrect';
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -46,4 +46,3 @@ if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])
     </div>
 </body>
 </html>
-

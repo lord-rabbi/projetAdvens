@@ -1,10 +1,21 @@
 <?php
 require_once 'config/session.php';
+require_once 'config/database.php';
 
 if (!isset($_SESSION['id_utilisateur'])) {
     header('Location: login.php');
     exit();
 }
+
+$id_role = $_SESSION['id_role'];
+
+$stmt = $pdo->prepare("SELECT libelle, url FROM menus WHERE id_role = ? ORDER BY ordre");
+$stmt->execute([$id_role]);
+$menus = $stmt->fetchAll();
+
+$stmt = $pdo->prepare("SELECT titre, description FROM blocs WHERE id_role = ? ORDER BY ordre");
+$stmt->execute([$id_role]);
+$blocs = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html>
@@ -17,84 +28,30 @@ if (!isset($_SESSION['id_utilisateur'])) {
 
 <div class="header">
     <h2>Bienvenue <?php echo $_SESSION['prenom']; ?></h2>
-
-    <a href="logout.php">
-        <button>Déconnexion</button>
-    </a>
+    <a href="logout.php"><button>Déconnexion</button></a>
 </div>
 
 <div class="container">
-
     <div class="sidebar">
-
-        <?php if ($_SESSION['id_role'] == 1) { ?>
-
-            <ul>
-                <li><a href="#">Gestion utilisateurs</a></li>
-                <li><a href="#">Gestion rôles</a></li>
-                <li><a href="#">Toutes les demandes</a></li>
-            </ul>
-
-        <?php } elseif ($_SESSION['id_role'] == 2) { ?>
-
-            <ul>
-                <li><a href="#">Demandes à valider</a></li>
-                <li><a href="#">Demandes rejetées</a></li>
-            </ul>
-
-        <?php } elseif ($_SESSION['id_role'] == 3) { ?>
-
-
-            <ul>
-                <li><a href="#">Facturation</a></li>
-                <li><a href="#">Décaissements</a></li>
-            </ul>
-
-        <?php } elseif ($_SESSION['id_role'] == 4) { ?>
-
-            <ul>
-                <li><a href="#">Nouvelle demande</a></li>
-                <li><a href="#">Mes demandes</a></li>
-            </ul>
-
-        <?php } ?>
-
+        <ul>
+            <?php foreach ($menus as $menu): ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($menu['url']); ?>">
+                        <?php echo htmlspecialchars($menu['libelle']); ?>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 
     <div class="content">
-
-        <?php if ($_SESSION['id_role'] == 1) { ?>
-
+        <?php foreach ($blocs as $bloc): ?>
             <div class="card">
-                <h2>Espace Administrateur</h2>
-                <p>Gestion complète du système.</p>
+                <h2><?php echo htmlspecialchars($bloc['titre']); ?></h2>
+                <p><?php echo htmlspecialchars($bloc['description']); ?></p>
             </div>
-
-        <?php } elseif ($_SESSION['id_role'] == 2) { ?>
-
-            <div class="card">
-                <h2>Espace Chef</h2>
-                <p>Validation et rejet des demandes.</p>
-            </div>
-
-        <?php } elseif ($_SESSION['id_role'] == 3) { ?>
-
-            <div class="card">
-                <h2>Espace Logistique</h2>
-                <p>Facturation et décaissements.</p>
-            </div>
-
-        <?php } elseif ($_SESSION['id_role'] == 4) { ?>
-
-            <div class="card">
-                <h2>Espace Demandeur</h2>
-                <p>Création et suivi des demandes.</p>
-            </div>
-
-        <?php } ?>
-
+        <?php endforeach; ?>
     </div>
-
 </div>
 
 </body>
