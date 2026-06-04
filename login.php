@@ -1,17 +1,20 @@
 <?php
 require_once 'config/session.php';
 require_once 'config/database.php';
+
 $erreur = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $email = $_POST['email'] ?? '';
-    $mot_de_passe = $_POST['mdp'] ?? '';
+    $mdp = $_POST['mdp'] ?? '';
 
     $stmt = $pdo->prepare("SELECT * FROM utilisateurs WHERE email = ?");
     $stmt->execute([$email]);
     $utilisateur = $stmt->fetch();
 
-    if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
+    if ($utilisateur && password_verify($mdp, $utilisateur['mdp'])) {
+
         $_SESSION['id_utilisateur'] = $utilisateur['id_utilisateur'];
         $_SESSION['nom'] = $utilisateur['nom'];
         $_SESSION['prenom'] = $utilisateur['prenom'];
@@ -21,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         header('Location: dashboard.php');
         exit();
+
     } else {
         $erreur = 'Email ou mot de passe incorrect';
     }

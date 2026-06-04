@@ -8,7 +8,7 @@ $adminExiste = $stmt->fetchColumn();
 
 if (!$adminExiste) {
     $mdp_hash = password_hash('password', PASSWORD_DEFAULT);
-    $sql = "INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, id_role) 
+    $sql = "INSERT INTO utilisateurs (nom, prenom, email, mdp, id_role) 
             VALUES ('Mylord', 'Admin', 'admin@gmail.com', :mdp, 1)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':mdp' => $mdp_hash]);
