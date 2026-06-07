@@ -5,23 +5,38 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
+    font-family: 'Ubuntu', 'Arial', sans-serif;
+    background: #f5f7fa;
 }
 
 .header {
-    background: #1f2937;
-    color: white;
-    padding: 20px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    padding: 15px 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header h2 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #282828;
+    margin: 0;
+}
+
+.header h2 i {
+    color: #008C45;
 }
 
 .header a {
-    color: white;
+    color: #008C45;
     text-decoration: none;
-    margin-left: 15px;
+    margin-left: 20px;
+    font-weight: 500;
 }
 
 .header a:hover {
@@ -30,115 +45,170 @@ body {
 
 .onglets {
     background: white;
-    padding: 10px 20px;
-    border-bottom: 1px solid #ddd;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    padding: 0 30px;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 .onglets a {
-    color: #1f2937;
+    color: #6c757d;
     text-decoration: none;
-    padding: 10px 15px;
+    padding: 15px 20px;
     display: inline-block;
-    font-weight: bold;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
 }
 
 .onglets a:hover {
-    background: #e5e7eb;
-    border-radius: 5px;
+    color: #008C45;
+}
+
+.onglets a.active {
+    color: #008C45;
+    border-bottom-color: #008C45;
 }
 
 .content {
-    padding: 20px;
+    padding: 30px;
     max-width: 1400px;
     margin: 0 auto;
 }
 
 .content h3 {
-    margin-bottom: 20px;
-    color: #1f2937;
+    margin-bottom: 25px;
+    color: #282828;
+    font-weight: 600;
 }
 
 table {
     width: 100%;
     background: white;
-    border-collapse: collapse;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 th {
-    background: #1f2937;
+    background: #282828;
     color: white;
-    font-weight: bold;
+    font-weight: 600;
+    padding: 15px;
+    border: none;
+}
+
+td {
+    padding: 12px 15px;
+    vertical-align: middle;
+    color: #4a5568;
 }
 
 tr:hover {
-    background: #f9fafb;
+    background: #f8f9fa;
 }
 
-a {
-    color: #1f2937;
-    text-decoration: none;
+.badge-role {
+    background: #e8f5e9;
+    color: #008C45;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
 }
 
-a:hover {
-    text-decoration: underline;
+.actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-table a {
-    color: #3b82f6;
-    margin-right: 10px;
-}
-
-table a:hover {
-    text-decoration: underline;
-}
-
-table a[onclick] {
-    color: #dc2626;
-    cursor: pointer;
-}
-
-a[href="ajouter.php"] {
-    display: inline-block;
-    margin-top: 20px;
-    background: #10b981;
+.btn-modifier {
+    background: #008C45;
     color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-modifier:hover {
+    background: #006633;
+    color: white;
     text-decoration: none;
 }
 
-a[href="ajouter.php"]:hover {
-    background: #059669;
+.btn-supprimer {
+    background: #dc3545;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-supprimer:hover {
+    background: #c82333;
+    color: white;
     text-decoration: none;
 }
 
-.erreur {
-    background: #f8d7da;
-    color: #721c24;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    text-align: center;
+.btn-supprimer-disabled {
+    background: #e0e0e0;
+    color: #9e9e9e;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: not-allowed;
 }
 
-.succes {
-    background: #d4edda;
-    color: #155724;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    text-align: center;
+.btn-ajouter {
+    background: #008C45;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
-/* la partie formulaire*/
+.btn-ajouter:hover {
+    background: #006633;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.table-responsive {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .onglets {
+        padding: 0 15px;
+    }
+    
+    .onglets a {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    
+    .content {
+        padding: 20px;
+    }
+    
+    .actions {
+        flex-direction: column;
+        gap: 5px;
+    }
+}

@@ -1,0 +1,45 @@
+body {
+    font-family: 'Ubuntu', 'Arial', sans-serif;
+    background: #f5f7fa;
+}
+
+.header {
+    background: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.header a {
+    color: #008C45;
+    text-decoration: none;
+}
+
+.container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.form-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-left: 4px solid #008C45;
+}
+
+.btn-submit {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 30px;
+    width: 100%;
+}
+
+.btn-submit:hover {
+    background: #006633;
+}

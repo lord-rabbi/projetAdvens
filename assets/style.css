@@ -1,60 +1,52 @@
 * {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: #383d46;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    font-family: 'Ubuntu', 'Arial', sans-serif;
+    background: linear-gradient(135deg, #008C45 0%, #006633 100%);
 }
 
-.connexion {
-    background: #fff;
-    width: 400px;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+.card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.98);
 }
 
-.connexion h2 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: #333;
+.input-group-text {
+    background: white;
+    border-right: none;
 }
 
-.erreur {
-    background: #ffe5e5;
-    color: #d8000c;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    text-align: center;
+.form-control {
+    border-left: none;
 }
 
-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.form-control:focus {
+    box-shadow: none;
+    border-color: #ced4da;
 }
 
-input {
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 15px;
+.input-group:focus-within .input-group-text {
+    border-color: #008C45;
+    color: #008C45;
 }
 
+.input-group:focus-within .form-control {
+    border-color: #008C45;
+}
 
-button {
-    padding: 12px;
-    background: #6a7117;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background: #006633 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 140, 69, 0.3);
+}
+
+.alert {
+    font-size: 14px;
 }

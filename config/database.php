@@ -2,7 +2,7 @@
 $host = 'localhost';
 $dbname = 'db_decaissement';
 $username = 'root';
-$password = 'root123';
+$password = 'Root1234';
 
 try {
 
