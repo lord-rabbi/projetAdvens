@@ -92,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <div class="header">
     <h2> Administration</h2>
     <div>
-        <a href="../dashboard.php">Dashboard</a>
         <a href="../logout.php"><i class="fas fa-sign-out-alt me-1"></i> Deconnexion</a>
     </div>
 </div>

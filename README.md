@@ -148,3 +148,21 @@ INSERT INTO menus (id_role, libelle, url, ordre) VALUES
 
 (4,'Nouvelle demande','demandes/creer.php',1),
 (4,'Mes demandes','demandes/mes_demandes.php',2);
+
+
+CREATE TABLE demandes (
+    id_demande INT PRIMARY KEY AUTO_INCREMENT,
+    objet TEXT NOT NULL,
+    montant_demande DECIMAL(10,2) NOT NULL,
+    devise VARCHAR(3) NOT NULL DEFAULT 'USD',
+    date_creation DATETIME NOT NULL,
+    id_demandeur INT NOT NULL,
+    statut VARCHAR(50) NOT NULL,
+    piece_jointe VARCHAR(255) NULL,
+    date_validation_chef DATETIME NULL,
+    date_facture DATETIME NULL,
+    date_decaissement DATETIME NULL,
+    justification_rejet TEXT NULL,
+    renvoyee_apres_rejet TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (id_demandeur) REFERENCES utilisateurs(id_utilisateur)
+);

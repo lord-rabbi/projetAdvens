@@ -315,6 +315,125 @@ tr:hover {
     width: 100%;
 }
 
+.btn-success-sm {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-success-sm:hover {
+    background: #006633;
+}
+
+.btn-danger-sm {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-danger-sm:hover {
+    background: #c82333;
+}
+
+.btn-warning-sm {
+    background: #ffc107;
+    color: #282828;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-warning-sm:hover {
+    background: #e0a800;
+}
+
+.btn-detail {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-detail:hover {
+    background: #138496;
+}
+
+.modal-header {
+    background: #008C45;
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+}
+
+.modal-footer {
+    border-top: none;
+    padding: 15px 20px;
+}
+
+#detail_objet, #detail_justification {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.input-group .form-select {
+    max-width: 100px;
+}
+
+.text-danger {
+    color: #dc3545;
+    font-size: 12px;
+}
+
+.btn-detail {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-detail:hover {
+    background: #138496;
+}
+
+.badge-warning {
+    background: #ffc107;
+    color: #282828;
+}
+
 @media (max-width: 768px) {
     .header {
         flex-direction: column;

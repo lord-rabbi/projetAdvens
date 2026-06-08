@@ -22,7 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['autoriser'] = $utilisateur['autoriser'];
         $_SESSION['id_departement'] = $utilisateur['id_departement'];
 
-        header('Location: dashboard.php');
+        if ($utilisateur['id_role'] == 1) {
+            header('Location: admin/index.php');
+        } elseif ($utilisateur['id_role'] == 2) {
+            header('Location: chef/dashboard.php');
+        } elseif ($utilisateur['id_role'] == 3) {
+            header('Location: logistique/dashboard.php');
+        } else {
+            header('Location: dashboard.php');
+        }
         exit();
 
     } else {
