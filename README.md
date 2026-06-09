@@ -144,7 +144,7 @@ CREATE TABLE `demandes` (
   `devise` varchar(3) NOT NULL DEFAULT 'USD',
   `date_creation` datetime NOT NULL,
   `id_demandeur` int NOT NULL,
-  `statut` varchar(50) NOT NULL,
+  `statut` enum('pending','pendinglogistique','facturee','confirmee','rejetee','annulee') NOT NULL DEFAULT 'pending',
   `piece_jointe` varchar(255) DEFAULT NULL,
   `date_validation_chef` datetime DEFAULT NULL,
   `date_facture` datetime DEFAULT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE `demandes` (
   PRIMARY KEY (`id_demande`),
   KEY `id_demandeur` (`id_demandeur`),
   CONSTRAINT `demandes_ibfk_1` FOREIGN KEY (`id_demandeur`) REFERENCES `utilisateurs` (`id_utilisateur`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -163,7 +163,6 @@ CREATE TABLE `demandes` (
 
 LOCK TABLES `demandes` WRITE;
 /*!40000 ALTER TABLE `demandes` DISABLE KEYS */;
-INSERT INTO `demandes` VALUES (1,'j ai besion d un pc',40.00,'USD','2026-06-08 22:52:14',3,'en_attente_chef','uploads/1780955534_buss.pdf',NULL,NULL,NULL,'c est trop',1);
 /*!40000 ALTER TABLE `demandes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -290,4 +289,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-09 22:32:08
+-- Dump completed on 2026-06-09 23:28:53
