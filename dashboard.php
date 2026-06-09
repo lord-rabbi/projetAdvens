@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $sql = "INSERT INTO demandes (objet, montant_demande, devise, date_creation, id_demandeur, statut, piece_jointe)
-                VALUES (?, ?, ?, NOW(), ?, 'en_attente_chef', ?)";
+                VALUES (?, ?, ?, NOW(), ?, 'pending', ?)";
         $stmt = $pdo->prepare($sql);
         if ($stmt->execute([$objet, $montant, $devise, $id_user, $piece_jointe])) {
             $succes = 'Demande envoyee avec succes.';
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } elseif ($montant <= 0) {
         $erreur = 'Le montant doit etre superieur a 0.';
     } else {
-        $sql = "UPDATE demandes SET objet = ?, montant_demande = ?, devise = ?, statut = 'en_attente_chef', renvoyee = 1 WHERE id_demande = ? AND id_demandeur = ?";
+        $sql = "UPDATE demandes SET objet = ?, montant_demande = ?, devise = ?, statut = 'pending', renvoyee = 1 WHERE id_demande = ? AND id_demandeur = ?";
         $stmt = $pdo->prepare($sql);
         if ($stmt->execute([$objet, $montant, $devise, $id_demande, $id_user])) {
             $succes = 'Demande modifiee et renvoyee.';
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 if (isset($_GET['annuler']) && is_numeric($_GET['annuler'])) {
     $id_demande = $_GET['annuler'];
-    $stmt = $pdo->prepare("UPDATE demandes SET statut = 'annulee' WHERE id_demande = ? AND id_demandeur = ? AND statut = 'en_attente_chef'");
+    $stmt = $pdo->prepare("UPDATE demandes SET statut = 'annulee' WHERE id_demande = ? AND id_demandeur = ? AND statut = 'pending'");
     $stmt->execute([$id_demande, $id_user]);
     header('Location: dashboard.php?page=mes_demandes');
     exit();
@@ -87,7 +87,7 @@ $mes_demandes = $stmt->fetchAll();
 
 $demande_modification = null;
 if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
-    $stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demande = ? AND id_demandeur = ? AND statut = 'rejetee_chef'");
+    $stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demande = ? AND id_demandeur = ? AND statut = 'rejetee'");
     $stmt->execute([$_GET['modifier'], $id_user]);
     $demande_modification = $stmt->fetch();
     if ($demande_modification) {
@@ -211,11 +211,11 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                     <?php
                                     $statut = $demande['statut'];
                                     $badge = '';
-                                    if ($statut == 'en_attente_chef') $badge = 'badge-attente';
-                                    elseif ($statut == 'en_attente_logistique') $badge = 'badge-logistique';
+                                    if ($statut == 'pending') $badge = 'badge-attente';
+                                    elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
                                     elseif ($statut == 'facturee') $badge = 'badge-facturee';
-                                    elseif ($statut == 'decaissement_confirme') $badge = 'badge-succes';
-                                    elseif ($statut == 'rejetee_chef') $badge = 'badge-rejet';
+                                    elseif ($statut == 'confirmee') $badge = 'badge-succes';
+                                    elseif ($statut == 'rejetee') $badge = 'badge-rejet';
                                     elseif ($statut == 'annulee') $badge = 'badge-annule';
                                     ?>
                                     <tr>
@@ -245,19 +245,19 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                         </td>
                                         <td><?php echo $demande['date_creation']; ?></td>
                                         <td>
-                                            <?php if ($statut == 'rejetee_chef' && !empty($demande['justification_rejet'])): ?>
+                                            <?php if ($statut == 'rejetee' && !empty($demande['justification_rejet'])): ?>
                                                 <?php echo htmlspecialchars(substr($demande['justification_rejet'], 0, 50)); ?>...
-                                            <?php elseif ($statut == 'rejetee_chef'): ?>
+                                            <?php elseif ($statut == 'rejetee'): ?>
                                                 <span class="text-danger">Rejetee</span>
                                             <?php else: ?>
                                                 -
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if ($statut == 'rejetee_chef'): ?>
+                                            <?php if ($statut == 'rejetee'): ?>
                                                 <a href="dashboard.php?page=modifier&modifier=<?php echo $demande['id_demande']; ?>" class="btn-warning-sm">Modifier</a>
                                             <?php endif; ?>
-                                            <?php if ($statut == 'en_attente_chef'): ?>
+                                            <?php if ($statut == 'pending'): ?>
                                                 <a href="dashboard.php?annuler=<?php echo $demande['id_demande']; ?>&page=mes_demandes" class="btn-danger-sm" onclick="return confirm('Annuler ?')">Annuler</a>
                                             <?php endif; ?>
                                         </td>
@@ -315,7 +315,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
         document.getElementById('detail_justification').innerText = justification || 'Aucune justification';
         const piece = button.getAttribute('data-piece');
         if (piece) {
-            document.getElementById('detail_piece').innerHTML = '<a href="../' + piece + '" target="_blank" class="btn btn-sm btn-outline-primary">Telecharger la piece jointe</a>';
+            document.getElementById('detail_piece').innerHTML = '<a href="' + piece + '" target="_blank" class="btn btn-sm btn-outline-primary">Telecharger la piece jointe</a>';
         } else {
             document.getElementById('detail_piece').innerHTML = 'Aucune piece jointe';
         }

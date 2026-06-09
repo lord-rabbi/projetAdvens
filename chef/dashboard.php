@@ -19,7 +19,7 @@ $succes = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'valider') {
         $id_demande = $_POST['id_demande'] ?? 0;
-        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'en_attente_logistique', date_validation_chef = NOW() WHERE id_demande = ?");
+        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pendinglogistique', date_validation_chef = NOW() WHERE id_demande = ?");
         if ($stmt->execute([$id_demande])) {
             $succes = 'Demande validee avec succes.';
         } else {
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($justification)) {
             $erreur = 'La justification est obligatoire pour un rejet.';
         } else {
-            $stmt = $pdo->prepare("UPDATE demandes SET statut = 'rejetee_chef', justification_rejet = ? WHERE id_demande = ?");
+            $stmt = $pdo->prepare("UPDATE demandes SET statut = 'rejetee', justification_rejet = ? WHERE id_demande = ?");
             if ($stmt->execute([$justification, $id_demande])) {
                 $succes = 'Demande rejetee.';
             } else {
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['action']) && $_POST['action'] === 'reactiver') {
         $id_demande = $_POST['id_demande'] ?? 0;
-        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'en_attente_chef', renvoyee = 1 WHERE id_demande = ?");
+        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pending', renvoyee = 1 WHERE id_demande = ?");
         if ($stmt->execute([$id_demande])) {
             $succes = 'Demande reactiver avec succes.';
         } else {
@@ -127,11 +127,11 @@ $demandes = $stmt->fetchAll();
                                 <?php
                                 $statut = $demande['statut'];
                                 $badge = '';
-                                if ($statut == 'en_attente_chef') $badge = 'badge-attente';
-                                elseif ($statut == 'en_attente_logistique') $badge = 'badge-logistique';
+                                if ($statut == 'pending') $badge = 'badge-attente';
+                                elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
                                 elseif ($statut == 'facturee') $badge = 'badge-facturee';
-                                elseif ($statut == 'decaissement_confirme') $badge = 'badge-succes';
-                                elseif ($statut == 'rejetee_chef') $badge = 'badge-rejet';
+                                elseif ($statut == 'confirmee') $badge = 'badge-succes';
+                                elseif ($statut == 'rejetee') $badge = 'badge-rejet';
                                 elseif ($statut == 'annulee') $badge = 'badge-annule';
                                 ?>
                                 <tr>
@@ -171,14 +171,14 @@ $demandes = $stmt->fetchAll();
                                     </td>
                                     <td><?php echo $demande['date_creation']; ?></td>
                                     <td>
-                                        <?php if ($statut == 'en_attente_chef'): ?>
+                                        <?php if ($statut == 'pending'): ?>
                                             <form method="POST" style="display:inline-block;">
                                                 <input type="hidden" name="action" value="valider">
                                                 <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
                                                 <button type="submit" class="btn-success-sm">Valider</button>
                                             </form>
                                             <button type="button" class="btn-danger-sm" data-bs-toggle="modal" data-bs-target="#rejetModal" data-id="<?php echo $demande['id_demande']; ?>">Rejeter</button>
-                                        <?php elseif ($statut == 'rejetee_chef'): ?>
+                                        <?php elseif ($statut == 'rejetee'): ?>
                                             <form method="POST" style="display:inline-block;">
                                                 <input type="hidden" name="action" value="reactiver">
                                                 <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">

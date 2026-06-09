@@ -74,6 +74,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'modifier_utilisateur') {
+    $id_utilisateur = $_POST['id_utilisateur'] ?? 0;
+    $nom = trim($_POST['nom'] ?? '');
+    $prenom = trim($_POST['prenom'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $id_role = $_POST['id_role'] ?? '';
+    $id_departement = $_POST['id_departement'] ?? null;
+    $new_departement = trim($_POST['new_departement'] ?? '');
+    $mdp = trim($_POST['mdp'] ?? '');
+
+    if (empty($nom) || empty($prenom) || empty($email) || empty($id_role)) {
+        $erreur = 'Tous les champs obligatoires doivent etre remplis.';
+    } else {
+        if (!empty($new_departement)) {
+            $check = $pdo->prepare("SELECT id_departement FROM departements WHERE departement = ?");
+            $check->execute([$new_departement]);
+            $dep = $check->fetch();
+
+            if ($dep) {
+                $id_departement = $dep['id_departement'];
+            } else {
+                $ins = $pdo->prepare("INSERT INTO departements (departement) VALUES (?)");
+                $ins->execute([$new_departement]);
+                $id_departement = $pdo->lastInsertId();
+            }
+        }
+
+        if (!empty($mdp)) {
+            $mdp_hash = password_hash($mdp, PASSWORD_DEFAULT);
+            $sql = "UPDATE utilisateurs SET nom = ?, prenom = ?, email = ?, mdp = ?, id_role = ?, id_departement = ? WHERE id_utilisateur = ?";
+            $stmt = $pdo->prepare($sql);
+            $resultat = $stmt->execute([$nom, $prenom, $email, $mdp_hash, $id_role, $id_departement, $id_utilisateur]);
+        } else {
+            $sql = "UPDATE utilisateurs SET nom = ?, prenom = ?, email = ?, id_role = ?, id_departement = ? WHERE id_utilisateur = ?";
+            $stmt = $pdo->prepare($sql);
+            $resultat = $stmt->execute([$nom, $prenom, $email, $id_role, $id_departement, $id_utilisateur]);
+        }
+
+        if ($resultat) {
+            $succes = 'Utilisateur modifie avec succes.';
+            echo '<meta http-equiv="refresh" content="1;url=index.php?onglet=utilisateurs">';
+        } else {
+            $erreur = 'Erreur lors de la modification.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -85,12 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/admin.css">
-    <link rel="stylesheet" href="../assets/ajouter.css">
 </head>
 <body>
 
 <div class="header">
-    <h2> Administration</h2>
+    <h2>Administration</h2>
     <div>
         <a href="../logout.php"><i class="fas fa-sign-out-alt me-1"></i> Deconnexion</a>
     </div>
@@ -164,9 +210,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <td><span class="badge-role"><?php echo $row['nom_role']; ?></span></td>
                         <td><?php echo $row['departement'] ?? '-'; ?></td>
                         <td class="actions">
-                            <a href="modifier.php?id=<?php echo $row['id_utilisateur']; ?>" class="btn-modifier">
+                            <button type="button" class="btn-modifier" data-bs-toggle="modal" data-bs-target="#modifierModal" 
+                                data-id="<?php echo $row['id_utilisateur']; ?>"
+                                data-nom="<?php echo htmlspecialchars($row['nom']); ?>"
+                                data-prenom="<?php echo htmlspecialchars($row['prenom']); ?>"
+                                data-email="<?php echo htmlspecialchars($row['email']); ?>"
+                                data-role="<?php echo $row['id_role']; ?>"
+                                data-departement="<?php echo $row['id_departement']; ?>">
                                 <i class="fas fa-edit"></i> Modifier
-                            </a>
+                            </button>
                             <?php if ($row['id_role'] != 1): ?>
                                 <a href="supprimer.php?id=<?php echo $row['id_utilisateur']; ?>" class="btn-supprimer" onclick="return confirm('Supprimer ?')">
                                     <i class="fas fa-trash-alt"></i> Supprimer
@@ -192,7 +244,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <th>Objet</th>
                         <th>Montant</th>
                         <th>Demandeur</th>
+                        <th>Departement</th>
                         <th>Statut</th>
+                        <th>Renvoyee</th>
+                        <th>Piece jointe</th>
                         <th>Date creation</th>
                         <th>Actions</th>
                     </tr>
@@ -207,20 +262,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     ORDER BY d.id_demande DESC
                 ");
                 while ($row = $stmt->fetch()):
+                    $statut = $row['statut'];
+                    $badge = '';
+                    if ($statut == 'pending') $badge = 'badge-attente';
+                    elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
+                    elseif ($statut == 'facturee') $badge = 'badge-facturee';
+                    elseif ($statut == 'confirmee') $badge = 'badge-succes';
+                    elseif ($statut == 'rejetee') $badge = 'badge-rejet';
+                    elseif ($statut == 'annulee') $badge = 'badge-annule';
                 ?>
-                    <tr>
-                        <td><?php echo $row['id_demande']; ?></td>
-                        <td><?php echo htmlspecialchars($row['objet']); ?></td>
-                        <td><?php echo number_format($row['montant_demande'], 2); ?> USD</p></td>
-                        <td><?php echo htmlspecialchars($row['demandeur']); ?></td>
-                        <td><?php echo $row['statut']; ?></td>
-                        <td><?php echo $row['date_creation']; ?></td>
-                        <td class="actions">
-                            <a href="../demandes/detail.php?id=<?php echo $row['id_demande']; ?>" class="btn-modifier">
-                                <i class="fas fa-eye"></i> Voir
+                <tr>
+                    <td><?php echo $row['id_demande']; ?></td>
+                    <td><?php echo htmlspecialchars($row['objet']); ?></td>
+                    <td><?php echo number_format($row['montant_demande'], 2); ?> <?php echo $row['devise'] ?? 'USD'; ?></td>
+                    <td><?php echo htmlspecialchars($row['demandeur']); ?></td>
+                    <td><?php echo $row['departement'] ?? '-'; ?></td>
+                    <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+                    <td>
+                        <?php if ($row['renvoyee'] == 1): ?>
+                            <span class="badge bg-warning text-dark">Oui</span>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Non</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($row['piece_jointe']): ?>
+                            <a href="../<?php echo $row['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download"></i> Voir
                             </a>
-                        </td>
-                    </tr>
+                        <?php else: ?>
+                            <span class="text-muted">Aucune</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo $row['date_creation']; ?></td>
+                    <td class="actions">
+                        <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
+                            data-id="<?php echo $row['id_demande']; ?>"
+                            data-objet="<?php echo htmlspecialchars($row['objet']); ?>"
+                            data-montant="<?php echo number_format($row['montant_demande'], 2); ?>"
+                            data-devise="<?php echo $row['devise'] ?? 'USD'; ?>"
+                            data-demandeur="<?php echo htmlspecialchars($row['demandeur']); ?>"
+                            data-departement="<?php echo $row['departement'] ?? '-'; ?>"
+                            data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                            data-renvoyee="<?php echo $row['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
+                            data-justification="<?php echo htmlspecialchars($row['justification_rejet'] ?? ''); ?>"
+                            data-date="<?php echo $row['date_creation']; ?>"
+                            data-piece="<?php echo $row['piece_jointe'] ?? ''; ?>">
+                            <i class="fas fa-eye"></i> Voir
+                        </button>
+                    </p>
+                </tr>
                 <?php endwhile; ?>
                 </tbody>
             </table>
@@ -338,6 +429,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </div>
 </div>
 
+<div class="modal fade" id="modifierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit me-2"></i> Modifier l'utilisateur
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="modifier_utilisateur">
+                <input type="hidden" name="id_utilisateur" id="modif_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nom *</label>
+                            <input type="text" name="nom" id="modif_nom" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prenom *</label>
+                            <input type="text" name="prenom" id="modif_prenom" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email *</label>
+                        <input type="email" name="email" id="modif_email" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau mot de passe</label>
+                        <input type="password" name="mdp" class="form-control" placeholder="Laisser vide pour ne pas changer">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Role *</label>
+                        <select name="id_role" id="modif_role" class="form-select" required>
+                            <option value="">Selectionner un role</option>
+                            <?php foreach ($roles as $role): ?>
+                                <option value="<?php echo $role['id_role']; ?>">
+                                    <?php echo ucfirst($role['nom_role']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Departement existant</label>
+                        <select name="id_departement" id="modif_departement" class="form-select">
+                            <option value="">Aucun</option>
+                            <?php foreach ($departements as $dep): ?>
+                                <option value="<?php echo $dep['id_departement']; ?>">
+                                    <?php echo htmlspecialchars($dep['departement']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nouveau departement</label>
+                        <input type="text" name="new_departement" class="form-control" placeholder="Creer un nouveau departement">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Detail de la demande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>ID :</strong> <span id="detail_id"></span></p>
+                <p><strong>Demandeur :</strong> <span id="detail_demandeur"></span></p>
+                <p><strong>Departement :</strong> <span id="detail_departement"></span></p>
+                <p><strong>Montant :</strong> <span id="detail_montant"></span> <span id="detail_devise"></span></p>
+                <p><strong>Statut :</strong> <span id="detail_statut"></span></p>
+                <p><strong>Renvoyee apres rejet :</strong> <span id="detail_renvoyee"></span></p>
+                <p><strong>Date creation :</strong> <span id="detail_date"></span></p>
+                <p><strong>Motif :</strong></p>
+                <div class="border p-2 rounded bg-light" id="detail_objet" style="white-space: pre-wrap;"></div>
+                <p class="mt-2"><strong>Justification du rejet :</strong></p>
+                <div class="border p-2 rounded bg-light" id="detail_justification" style="white-space: pre-wrap;"></div>
+                <p class="mt-2"><strong>Piece jointe :</strong></p>
+                <div class="border p-2 rounded bg-light" id="detail_piece"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
@@ -345,6 +537,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         var myModal = new bootstrap.Modal(document.getElementById('ajouterModal'));
         myModal.show();
     <?php endif; ?>
+
+    const modifierModal = document.getElementById('modifierModal');
+    modifierModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        document.getElementById('modif_id').value = button.getAttribute('data-id');
+        document.getElementById('modif_nom').value = button.getAttribute('data-nom');
+        document.getElementById('modif_prenom').value = button.getAttribute('data-prenom');
+        document.getElementById('modif_email').value = button.getAttribute('data-email');
+        document.getElementById('modif_role').value = button.getAttribute('data-role');
+        document.getElementById('modif_departement').value = button.getAttribute('data-departement') || '';
+    });
+
+    const detailModal = document.getElementById('detailModal');
+    detailModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        document.getElementById('detail_id').innerText = button.getAttribute('data-id');
+        document.getElementById('detail_demandeur').innerText = button.getAttribute('data-demandeur');
+        document.getElementById('detail_departement').innerText = button.getAttribute('data-departement');
+        document.getElementById('detail_montant').innerText = button.getAttribute('data-montant');
+        document.getElementById('detail_devise').innerText = button.getAttribute('data-devise');
+        document.getElementById('detail_statut').innerText = button.getAttribute('data-statut');
+        document.getElementById('detail_renvoyee').innerText = button.getAttribute('data-renvoyee');
+        document.getElementById('detail_date').innerText = button.getAttribute('data-date');
+        document.getElementById('detail_objet').innerText = button.getAttribute('data-objet');
+        const justification = button.getAttribute('data-justification');
+        document.getElementById('detail_justification').innerText = justification || 'Aucune justification';
+        const piece = button.getAttribute('data-piece');
+        if (piece) {
+            document.getElementById('detail_piece').innerHTML = '<a href="../' + piece + '" target="_blank" class="btn btn-sm btn-outline-primary">Telecharger la piece jointe</a>';
+        } else {
+            document.getElementById('detail_piece').innerHTML = 'Aucune piece jointe';
+        }
+    });
 </script>
 </body>
 </html>

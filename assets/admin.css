@@ -116,6 +116,66 @@ tr:hover {
     font-weight: 600;
 }
 
+.badge-attente {
+    background: #fff3cd;
+    color: #856404;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-logistique {
+    background: #cce5ff;
+    color: #004085;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-facturee {
+    background: #d4edda;
+    color: #155724;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-succes {
+    background: #d1ecf1;
+    color: #0c5460;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-rejet {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-annule {
+    background: #e2e3e5;
+    color: #383d41;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
 .actions {
     display: flex;
     gap: 10px;
@@ -204,6 +264,41 @@ tr:hover {
 .badge-warning {
     background: #ffc107;
     color: #282828;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-secondary {
+    background: #6c757d;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.text-muted {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.modal-header {
+    background: #008C45;
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
 }
 
 @media (max-width: 768px) {
