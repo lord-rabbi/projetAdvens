@@ -99,7 +99,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Demandeur</title>
+    <title>Demandeur</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -108,7 +108,10 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
 <body>
 
 <div class="header">
-    <h2>Bienvenue, <span><?php echo $_SESSION['prenom']; ?></span></h2>
+    <div class="header-flow">
+        <img src="assets/Advans_Congo_Logo.svg" alt="svg advans">
+        <h2>Bienvenue <span><?php echo $_SESSION['prenom']; ?></span></h2>
+    </div>
     <a href="logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
 </div>
 

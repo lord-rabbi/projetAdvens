@@ -33,6 +33,18 @@ body {
     font-weight: 700;
 }
 
+.header-flow img{
+    height:40px;
+}
+
+.header-flow{
+    display: flex;
+    gap: 600px;
+}
+.header-flow h21{
+    margin-top: 200px;
+}
+
 .btn-deconnexion {
     background: transparent;
     border: 1px solid #dc3545;

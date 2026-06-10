@@ -320,40 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <?php else: ?>
 
         <h3 class="mb-4"><i class="fas fa-history me-2" style="color: #008C45;"></i> Historique des logs</h3>
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Date</th>
-                        <th>Utilisateur</th>
-                        <th>Action</th>
-                        <th>Statut</th>
-                        <th>Justification</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php
-                $stmt = $pdo->query("
-                    SELECT l.*, CONCAT(u.nom, ' ', u.prenom) as utilisateur
-                    FROM logs l
-                    JOIN utilisateurs u ON l.id_utilisateur = u.id_utilisateur
-                    ORDER BY l.id_log DESC LIMIT 100
-                ");
-                while ($row = $stmt->fetch()):
-                ?>
-                    <tr>
-                        <td><?php echo $row['id_log']; ?></td>
-                        <td><?php echo $row['date_action']; ?></td>
-                        <td><?php echo htmlspecialchars($row['utilisateur']); ?></td>
-                        <td><?php echo $row['action']; ?></td>
-                        <td><?php echo $row['nouveau_statut']; ?></td>
-                        <td><?php echo htmlspecialchars($row['justification'] ?? '-'); ?></td>
-                    </tr>
-                <?php endwhile; ?>
-                </tbody>
-            </table>
-        </div>
+        
 
     <?php endif; ?>
 </div>
