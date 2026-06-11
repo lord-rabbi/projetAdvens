@@ -446,6 +446,40 @@ tr:hover {
     color: #282828;
 }
 
+.btn-facturer{
+    color: #e0e0e0;
+    padding: 2px 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 400;
+}
+
+.btn-facturer {
+    background: #008C45;
+    color: white;
+}
+
+.btn-decaisser{
+    color: #000000;
+    padding: 2px 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 400;
+}
+
+.btn-decaisser{
+    background: #ffc107;
+    color: white;
+}
+
+.btn-decaisser{
+    color: #000000;
+    padding: 2px 5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 400;
+}
+
 @media (max-width: 768px) {
     .header {
         flex-direction: column;
