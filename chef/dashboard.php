@@ -21,6 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_demande = $_POST['id_demande'] ?? 0;
         $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pendinglogistique', date_validation_chef = NOW() WHERE id_demande = ?");
         if ($stmt->execute([$id_demande])) {
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'validation', 'pendinglogistique', ?)";
+            $stmt_log = $pdo->prepare($sql_log);
+            $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
             $succes = 'Demande validee avec succes.';
         } else {
             $erreur = 'Erreur lors de la validation.';
@@ -35,6 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = $pdo->prepare("UPDATE demandes SET statut = 'rejetee', justification_rejet = ? WHERE id_demande = ?");
             if ($stmt->execute([$justification, $id_demande])) {
+                $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, justification, id_demande) VALUES (NOW(), ?, 'rejet', 'rejetee', ?, ?)";
+                $stmt_log = $pdo->prepare($sql_log);
+                $stmt_log->execute([$_SESSION['id_utilisateur'], $justification, $id_demande]);
                 $succes = 'Demande rejetee.';
             } else {
                 $erreur = 'Erreur lors du rejet.';
@@ -46,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_demande = $_POST['id_demande'] ?? 0;
         $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pending', renvoyee = 1 WHERE id_demande = ?");
         if ($stmt->execute([$id_demande])) {
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'reactivation', 'pending', ?)";
+            $stmt_log = $pdo->prepare($sql_log);
+            $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
             $succes = 'Demande reactiver avec succes.';
         } else {
             $erreur = 'Erreur lors de la reactivation.';
@@ -72,6 +81,7 @@ $demandes = $stmt->fetchAll();
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/dashboard.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
 
@@ -79,7 +89,7 @@ $demandes = $stmt->fetchAll();
     <div class="header-flow">
         <img src="../assets/Advans_Congo_Logo.svg" alt="svg advans">
     </div>
-    <h2>Bienvenue  <span><?php echo $_SESSION['prenom']; ?></span></h2>
+    <h2>Bienvenue <span><?php echo $_SESSION['prenom']; ?></span></h2>
     <a href="../logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
 </div>
 
@@ -125,7 +135,7 @@ $demandes = $stmt->fetchAll();
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="demandesTableBody">
                             <?php foreach ($demandes as $demande): ?>
                                 <?php
                                 $statut = $demande['statut'];
@@ -165,9 +175,7 @@ $demandes = $stmt->fetchAll();
                                     </td>
                                     <td>
                                         <?php if ($demande['piece_jointe']): ?>
-                                            <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-download"></i> Voir
-                                            </a>
+                                            <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
                                         <?php else: ?>
                                             <span class="text-muted">Aucune</span>
                                         <?php endif; ?>
@@ -253,6 +261,18 @@ $demandes = $stmt->fetchAll();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function refreshDemandes() {
+        $.ajax({
+            url: '../refresh.php?action=demandes',
+            type: 'GET',
+            dataType: 'html',
+            success: function(data) {
+                $('#demandesTableBody').html(data);
+            }
+        });
+    }
+    setInterval(refreshDemandes, 5000);
+
     const rejetModal = document.getElementById('rejetModal');
     rejetModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;

@@ -132,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/admin.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
 
@@ -190,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="utilisateursTableBody">
                 <?php
                 $stmt = $pdo->query("
                     SELECT u.*, r.nom_role, d.departement 
@@ -227,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                                 <span class="btn-supprimer-disabled"><i class="fas fa-trash-alt"></i> Supprimer</span>
                             <?php endif; ?>
                         </td>
-                    </tr>
+                    <tr>
                 <?php endwhile; ?>
                 </tbody>
             </table>
@@ -252,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="demandesTableBody">
                 <?php
                 $stmt = $pdo->query("
                     SELECT d.*, CONCAT(u.nom, ' ', u.prenom) as demandeur, dep.departement
@@ -311,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <i class="fas fa-eye"></i> Voir
                         </button>
                     </p>
-                </tr>
+                <tr>
                 <?php endwhile; ?>
                 </tbody>
             </table>
@@ -320,7 +321,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <?php else: ?>
 
         <h3 class="mb-4"><i class="fas fa-history me-2" style="color: #008C45;"></i> Historique des logs</h3>
-        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Utilisateur</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php
+                $stmt = $pdo->query("
+                    SELECT l.*, CONCAT(u.nom, ' ', u.prenom) as utilisateur, r.nom_role
+                    FROM logs l
+                    JOIN utilisateurs u ON l.id_utilisateur = u.id_utilisateur
+                    LEFT JOIN roles r ON u.id_role = r.id_role
+                    ORDER BY l.id_log DESC LIMIT 200
+                ");
+                while ($row = $stmt->fetch()):
+                ?>
+                    <tr>
+                        <td><?php echo $row['id_log']; ?></td>
+                        <td><?php echo $row['date_action']; ?></td>
+                        <td><?php echo htmlspecialchars($row['utilisateur']); ?></td>
+                        <td><?php echo $row['nom_role']; ?></td>
+                        <td>
+                            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#logDetailModal" 
+                                data-action="<?php echo $row['action']; ?>"
+                                data-statut="<?php echo $row['statut']; ?>"
+                                data-justification="<?php echo htmlspecialchars($row['justification'] ?? ''); ?>"
+                                data-id_demande="<?php echo $row['id_demande']; ?>"
+                                data-date="<?php echo $row['date_action']; ?>"
+                                data-utilisateur="<?php echo htmlspecialchars($row['utilisateur']); ?>"
+                                data-role="<?php echo $row['nom_role']; ?>">
+                                <i class="fas fa-eye"></i> Voir
+                            </button>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+                </tbody>
+            </table>
+        </div>
 
     <?php endif; ?>
 </div>
@@ -497,9 +541,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </div>
 </div>
 
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Detail du log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Date :</strong> <span id="log_date"></span></p>
+                <p><strong>Utilisateur :</strong> <span id="log_utilisateur"></span></p>
+                <p><strong>Role :</strong> <span id="log_role"></span></p>
+                <p><strong>Action :</strong> <span id="log_action"></span></p>
+                <p><strong>Statut :</strong> <span id="log_statut"></span></p>
+                <p><strong>ID demande :</strong> <span id="log_id_demande"></span></p>
+                <p><strong>Justification :</strong></p>
+                <div class="border p-2 rounded bg-light" id="log_justification" style="white-space: pre-wrap;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    function refreshUtilisateurs() {
+        $.ajax({
+            url: '../refresh.php?action=utilisateurs',
+            type: 'GET',
+            dataType: 'html',
+            success: function(data) {
+                $('#utilisateursTableBody').html(data);
+            }
+        });
+    }
+
+    function refreshDemandes() {
+        $.ajax({
+            url: '../refresh.php?action=demandes',
+            type: 'GET',
+            dataType: 'html',
+            success: function(data) {
+                $('#demandesTableBody').html(data);
+            }
+        });
+    }
+
+    <?php if ($onglet == 'utilisateurs'): ?>
+        setInterval(refreshUtilisateurs, 10000);
+    <?php elseif ($onglet == 'demandes'): ?>
+        setInterval(refreshDemandes, 10000);
+    <?php endif; ?>
+
     <?php if ($erreur && $onglet == 'utilisateurs'): ?>
         var myModal = new bootstrap.Modal(document.getElementById('ajouterModal'));
         myModal.show();
@@ -536,6 +632,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } else {
             document.getElementById('detail_piece').innerHTML = 'Aucune piece jointe';
         }
+    });
+
+    const logDetailModal = document.getElementById('logDetailModal');
+    logDetailModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        document.getElementById('log_date').innerText = button.getAttribute('data-date');
+        document.getElementById('log_utilisateur').innerText = button.getAttribute('data-utilisateur');
+        document.getElementById('log_role').innerText = button.getAttribute('data-role');
+        document.getElementById('log_action').innerText = button.getAttribute('data-action');
+        document.getElementById('log_statut').innerText = button.getAttribute('data-statut');
+        document.getElementById('log_id_demande').innerText = button.getAttribute('data-id_demande');
+        const justification = button.getAttribute('data-justification');
+        document.getElementById('log_justification').innerText = justification || 'Aucune justification';
     });
 </script>
 </body>

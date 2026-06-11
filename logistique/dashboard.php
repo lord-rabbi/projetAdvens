@@ -20,7 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_demande = $_POST['id_demande'] ?? 0;
         $stmt = $pdo->prepare("UPDATE demandes SET statut = 'facturee', date_facture = NOW() WHERE id_demande = ? AND statut = 'pendinglogistique'");
         if ($stmt->execute([$id_demande])) {
-            header('Location: logistique/dashboard.php');
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'facturation', 'facturee', ?)";
+            $stmt_log = $pdo->prepare($sql_log);
+            $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
+            header('Location: dashboard.php');
             exit();
         } else {
             $erreur = 'Erreur lors de la facturation.';
@@ -31,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_demande = $_POST['id_demande'] ?? 0;
         $stmt = $pdo->prepare("UPDATE demandes SET statut = 'confirmee', date_decaissement = NOW() WHERE id_demande = ? AND statut = 'facturee'");
         if ($stmt->execute([$id_demande])) {
-            header('Location: logistique/dashboard.php');
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'decaissement', 'confirmee', ?)";
+            $stmt_log = $pdo->prepare($sql_log);
+            $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
+            header('Location: dashboard.php');
             exit();
         } else {
             $erreur = 'Erreur lors du decaissement.';
@@ -60,6 +66,7 @@ $demandes = $stmt->fetchAll();
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/dashboard.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
 <body>
@@ -112,9 +119,9 @@ $demandes = $stmt->fetchAll();
                                     <th>Piece jointe</th>
                                     <th>Date</th>
                                     <th>Actions</th>
-                                </tr>
+                                <tr>
                             </thead>
-                            <tbody>
+                            <tbody id="demandesTableBody">
                                 <?php foreach ($demandes as $demande): ?>
                                     <?php
                                     $statut = $demande['statut'];
@@ -165,7 +172,7 @@ $demandes = $stmt->fetchAll();
                                                 </form>
                                             <?php endif; ?>
                                             </p>
-                                    <tr>
+                                    </tr>
                                     <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -201,6 +208,18 @@ $demandes = $stmt->fetchAll();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function refreshDemandes() {
+            $.ajax({
+                url: '../refresh.php?action=demandes',
+                type: 'GET',
+                dataType: 'html',
+                success: function(data) {
+                    $('#demandesTableBody').html(data);
+                }
+            });
+        }
+        setInterval(refreshDemandes, 5000);
+
         const detailModal = document.getElementById('detailModal');
         detailModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;

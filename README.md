@@ -290,3 +290,17 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-06-09 23:28:53
+
+DROP TABLE IF EXISTS logs;
+
+CREATE TABLE logs (
+    id_log INT PRIMARY KEY AUTO_INCREMENT,
+    date_action DATETIME NOT NULL,
+    id_utilisateur INT NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    statut VARCHAR(50) NOT NULL,
+    justification TEXT NULL,
+    id_demande INT NOT NULL,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateurs(id_utilisateur),
+    FOREIGN KEY (id_demande) REFERENCES demandes(id_demande)
+);
