@@ -43,6 +43,33 @@ body {
     text-decoration: underline;
 }
 
+.header-flow {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-flow img {
+    height: 40px;
+}
+
+.btn-deconnexion {
+    background: transparent;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 8px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-deconnexion:hover {
+    background: #dc3545;
+    color: white;
+}
+
 .onglets {
     background: white;
     padding: 0 30px;
@@ -78,6 +105,52 @@ body {
 .content h3 {
     margin-bottom: 25px;
     color: #282828;
+    font-weight: 600;
+}
+
+.sidebar {
+    width: 280px;
+    background: #282828;
+    min-height: calc(100vh - 70px);
+    padding: 30px 20px;
+}
+
+.sidebar .nav-link {
+    color: #e0e0e0;
+    padding: 12px 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 400;
+}
+
+.sidebar .nav-link:hover {
+    background: #008C45;
+    color: white;
+}
+
+.sidebar .nav-link.active {
+    background: #008C45;
+    color: white;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border-left: 4px solid #008C45;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+    color: #008C45;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
     font-weight: 600;
 }
 
@@ -176,6 +249,26 @@ tr:hover {
     display: inline-block;
 }
 
+.badge-warning {
+    background: #ffc107;
+    color: #282828;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-secondary {
+    background: #6c757d;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
 .actions {
     display: flex;
     gap: 10px;
@@ -191,6 +284,8 @@ tr:hover {
     font-size: 12px;
     font-weight: 500;
     transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
 }
 
 .btn-modifier:hover {
@@ -208,6 +303,8 @@ tr:hover {
     font-size: 12px;
     font-weight: 500;
     transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
 }
 
 .btn-supprimer:hover {
@@ -233,6 +330,8 @@ tr:hover {
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
 }
 
 .btn-ajouter:hover {
@@ -242,9 +341,84 @@ tr:hover {
     transform: translateY(-2px);
 }
 
-.table-responsive {
-    border-radius: 12px;
-    overflow: hidden;
+.btn-success-sm {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-success-sm:hover {
+    background: #006633;
+}
+
+.btn-danger-sm {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-danger-sm:hover {
+    background: #c82333;
+}
+
+.btn-warning-sm {
+    background: #ffc107;
+    color: #282828;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-warning-sm:hover {
+    background: #e0a800;
+}
+
+.btn-facturer {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-facturer:hover {
+    background: #006633;
+}
+
+.btn-decaisser {
+    background: #ffc107;
+    color: #282828;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-decaisser:hover {
+    background: #e0a800;
 }
 
 .btn-detail {
@@ -254,35 +428,27 @@ tr:hover {
     padding: 5px 12px;
     border-radius: 20px;
     font-size: 12px;
+    font-weight: 500;
     cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .btn-detail:hover {
     background: #138496;
 }
 
-.badge-warning {
-    background: #ffc107;
-    color: #282828;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.badge-secondary {
-    background: #6c757d;
-    color: white;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
+.table-responsive {
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .text-muted {
     color: #6c757d;
+    font-size: 12px;
+}
+
+.text-danger {
+    color: #dc3545;
     font-size: 12px;
 }
 
@@ -301,11 +467,162 @@ tr:hover {
     border: none;
 }
 
+.modal-footer {
+    border-top: none;
+    padding: 15px 20px;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #282828;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    width: 100%;
+}
+
+.form-control:focus {
+    border-color: #008C45;
+    box-shadow: 0 0 0 3px rgba(0, 140, 69, 0.1);
+    outline: none;
+}
+
+.form-select {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    width: 100%;
+}
+
+.alert {
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #008C45;
+}
+
+.mb-3 {
+    margin-bottom: 15px;
+}
+
+.mb-4 {
+    margin-bottom: 20px;
+}
+
+.me-2 {
+    margin-right: 8px;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+#detail_objet, #detail_justification {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+}
+
+.input-group .form-control {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .form-select {
+    width: 100px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.pagination-info {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pagination li a, .pagination li span {
+    display: block;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #008C45;
+}
+
+.pagination li a:hover {
+    background: #008C45;
+    color: white;
+    border-color: #008C45;
+}
+
+.pagination li.active span {
+    background: #008C45;
+    color: white;
+    border-color: #008C45;
+}
+
+.pagination li.disabled span {
+    color: #999;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
 @media (max-width: 768px) {
     .header {
         flex-direction: column;
         gap: 10px;
         text-align: center;
+    }
+    
+    .header-flow {
+        flex-direction: column;
+        gap: 10px;
     }
     
     .onglets {
@@ -321,8 +638,55 @@ tr:hover {
         padding: 20px;
     }
     
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        padding: 15px;
+    }
+    
+    .sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .sidebar .nav-link {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+    
     .actions {
         flex-direction: column;
         gap: 5px;
+    }
+    
+    .btn-warning-sm, .btn-danger-sm, .btn-success-sm, .btn-detail, .btn-facturer, .btn-decaisser {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 927px) {
+    .row {
+        display: flex;
+        flex-wrap: nowrap !important;
+    }
+    
+    .sidebar {
+        width: 250px;
+        flex-shrink: 0;
+    }
+    
+    .content {
+        flex: 1;
+        overflow-x: auto;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .table {
+        min-width: 700px;
     }
 }

@@ -93,8 +93,16 @@ if (isset($_GET['annuler']) && is_numeric($_GET['annuler'])) {
 }
 
 $page = $_GET['page'] ?? 'mes_demandes';
+$current_page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
+$limit = 10;
+$offset = ($current_page - 1) * $limit;
 
-$stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC");
+$total_stmt = $pdo->prepare("SELECT COUNT(*) FROM demandes WHERE id_demandeur = ?");
+$total_stmt->execute([$id_user]);
+$total_demandes = $total_stmt->fetchColumn();
+$total_pages = ceil($total_demandes / $limit);
+
+$stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT $limit OFFSET $offset");
 $stmt->execute([$id_user]);
 $mes_demandes = $stmt->fetchAll();
 
@@ -105,6 +113,30 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
     $demande_modification = $stmt->fetch();
     if ($demande_modification) {
         $page = 'modifier';
+    }
+}
+
+function getLibelleStatut($statut) {
+    switch ($statut) {
+        case 'pending': return 'Attente de validation';
+        case 'pendinglogistique': return 'Attente facture';
+        case 'facturee': return 'Attente de paiement';
+        case 'confirmee': return 'Décaissée';
+        case 'rejetee': return 'Rejetée';
+        case 'annulee': return 'Annulée';
+        default: return $statut;
+    }
+}
+
+function getBadgeClass($statut) {
+    switch ($statut) {
+        case 'pending': return 'badge-attente';
+        case 'pendinglogistique': return 'badge-logistique';
+        case 'facturee': return 'badge-facturee';
+        case 'confirmee': return 'badge-succes';
+        case 'rejetee': return 'badge-rejet';
+        case 'annulee': return 'badge-annule';
+        default: return '';
     }
 }
 ?>
@@ -235,19 +267,8 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                     <?php foreach ($mes_demandes as $demande): ?>
                                         <?php
                                         $statut = $demande['statut'];
-                                        $badge = '';
-                                        if ($statut == 'pending')
-                                            $badge = 'badge-attente';
-                                        elseif ($statut == 'pendinglogistique')
-                                            $badge = 'badge-logistique';
-                                        elseif ($statut == 'facturee')
-                                            $badge = 'badge-facturee';
-                                        elseif ($statut == 'confirmee')
-                                            $badge = 'badge-succes';
-                                        elseif ($statut == 'rejetee')
-                                            $badge = 'badge-rejet';
-                                        elseif ($statut == 'annulee')
-                                            $badge = 'badge-annule';
+                                        $libelle = getLibelleStatut($statut);
+                                        $badge = getBadgeClass($statut);
                                         ?>
                                         <tr>
                                             <td><?php echo $demande['id_demande']; ?></td>
@@ -259,7 +280,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                     data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                                                     data-demandeur="<?php echo $_SESSION['prenom'] . ' ' . $_SESSION['nom']; ?>"
                                                     data-date="<?php echo $demande['date_creation']; ?>"
-                                                    data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                                                    data-statut="<?php echo $libelle; ?>"
                                                     data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                                                     data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
                                                     data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
@@ -268,9 +289,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                             </td>
                                             <td><?php echo number_format($demande['montant_demande'], 2); ?>
                                                 <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                            <td><span
-                                                    class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span>
-                                            </td>
+                                            <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
                                             <td>
                                                 <?php if ($demande['renvoyee'] == 1): ?>
                                                     <span class="badge bg-warning text-dark">Oui</span>
@@ -283,7 +302,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                 <?php if ($statut == 'rejetee' && !empty($demande['justification_rejet'])): ?>
                                                     <?php echo htmlspecialchars(substr($demande['justification_rejet'], 0, 50)); ?>...
                                                 <?php elseif ($statut == 'rejetee'): ?>
-                                                    <span class="text-danger">Rejetee</span>
+                                                    <span class="text-danger">Rejetée</span>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>
@@ -294,7 +313,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                         class="btn-warning-sm">Modifier</a>
                                                 <?php endif; ?>
                                                 <?php if ($statut == 'pending'): ?>
-                                                    <a href="dashboard.php?annuler=<?php echo $demande['id_demande']; ?>&page=mes_demandes"
+                                                    <a href="dashboard.php?annuler=<?php echo $demande['id_demande']; ?>&page=mes_demandes&p=<?php echo $current_page; ?>"
                                                         class="btn-danger-sm" onclick="return confirm('Annuler ?')">Annuler</a>
                                                 <?php endif; ?>
                                             </td>
@@ -303,6 +322,36 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <?php if ($total_pages > 1): ?>
+                        <div class="pagination-container">
+                            <div class="pagination-info">
+                                Page <?php echo $current_page; ?> sur <?php echo $total_pages; ?> (<?php echo $total_demandes; ?> demandes)
+                            </div>
+                            <ul class="pagination">
+                                <?php if ($current_page > 1): ?>
+                                    <li><a href="?page=mes_demandes&p=<?php echo $current_page - 1; ?>">« Précédent</a></li>
+                                <?php else: ?>
+                                    <li class="disabled"><span>« Précédent</span></li>
+                                <?php endif; ?>
+
+                                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                    <?php if ($i == $current_page): ?>
+                                        <li class="active"><span><?php echo $i; ?></span></li>
+                                    <?php else: ?>
+                                        <li><a href="?page=mes_demandes&p=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                                    <?php endif; ?>
+                                <?php endfor; ?>
+
+                                <?php if ($current_page < $total_pages): ?>
+                                    <li><a href="?page=mes_demandes&p=<?php echo $current_page + 1; ?>">Suivant »</a></li>
+                                <?php else: ?>
+                                    <li class="disabled"><span>Suivant »</span></li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
+                        
                     </div>
                 <?php endif; ?>
             </div>
@@ -340,8 +389,9 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function refreshDemandes() {
+            var page = <?php echo $current_page; ?>;
             $.ajax({
-                url: 'refresh.php?action=mes_demandes',
+                url: 'refresh.php?action=mes_demandes&p=' + page,
                 type: 'GET',
                 dataType: 'html',
                 success: function(data) {

@@ -26,6 +26,7 @@ body {
     font-size: 1.2rem;
     font-weight: 500;
     color: #282828;
+    margin: 0;
 }
 
 .header h2 span {
@@ -33,16 +34,14 @@ body {
     font-weight: 700;
 }
 
-.header-flow img{
-    height:40px;
+.header-flow {
+    display: flex;
+    align-items: center;
+    gap: 20px;
 }
 
-.header-flow{
-    display: flex;
-    gap: 600px;
-}
-.header-flow h21{
-    margin-top: 200px;
+.header-flow img {
+    height: 40px;
 }
 
 .btn-deconnexion {
@@ -206,6 +205,70 @@ body {
     color: white;
 }
 
+.btn-success-sm {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-success-sm:hover {
+    background: #006633;
+}
+
+.btn-detail {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-detail:hover {
+    background: #138496;
+}
+
+.btn-facturer {
+    background: #008C45;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-facturer:hover {
+    background: #006633;
+}
+
+.btn-decaisser {
+    background: #ffc107;
+    color: #282828;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-decaisser:hover {
+    background: #e0a800;
+}
+
 .table {
     width: 100%;
     background: white;
@@ -289,6 +352,26 @@ tr:hover {
     display: inline-block;
 }
 
+.badge-warning {
+    background: #ffc107;
+    color: #282828;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-secondary {
+    background: #6c757d;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
 .alert {
     padding: 12px 15px;
     border-radius: 10px;
@@ -327,68 +410,18 @@ tr:hover {
     width: 100%;
 }
 
-.btn-success-sm {
-    background: #008C45;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 20px;
+.text-danger {
+    color: #dc3545;
     font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-.btn-success-sm:hover {
-    background: #006633;
-}
-
-.btn-danger-sm {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 20px;
+.text-muted {
+    color: #6c757d;
     font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-.btn-danger-sm:hover {
-    background: #c82333;
-}
-
-.btn-warning-sm {
-    background: #ffc107;
-    color: #282828;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-warning-sm:hover {
-    background: #e0a800;
-}
-
-.btn-detail {
-    background: #17a2b8;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-detail:hover {
-    background: #138496;
+.input-group .form-select {
+    max-width: 100px;
 }
 
 .modal-header {
@@ -418,67 +451,103 @@ tr:hover {
     line-height: 1.5;
 }
 
-.input-group .form-select {
-    max-width: 100px;
+.pagination {
+    display: flex;
+    gap: 5px;
+    list-style: none;
+    margin-top: 20px;
+    padding: 0;
 }
 
-.text-danger {
-    color: #dc3545;
-    font-size: 12px;
+.pagination li a, .pagination li span {
+    display: block;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #008C45;
 }
 
-.btn-detail {
-    background: #17a2b8;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.btn-detail:hover {
-    background: #138496;
-}
-
-.badge-warning {
-    background: #ffc107;
-    color: #282828;
-}
-
-.btn-facturer{
-    color: #e0e0e0;
-    padding: 2px 5px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: 400;
-}
-
-.btn-facturer {
+.pagination li a:hover {
     background: #008C45;
     color: white;
+    border-color: #008C45;
 }
 
-.btn-decaisser{
-    color: #000000;
-    padding: 2px 5px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: 400;
-}
-
-.btn-decaisser{
-    background: #ffc107;
+.pagination li.active span {
+    background: #008C45;
     color: white;
+    border-color: #008C45;
 }
 
-.btn-decaisser{
-    color: #000000;
-    padding: 2px 5px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: 400;
+.pagination li.disabled span {
+    color: #999;
+    cursor: not-allowed;
 }
+
+.pagination-info {
+    margin-top: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.pagination-info {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pagination li a, .pagination li span {
+    display: block;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-decoration: none;
+    color: #008C45;
+}
+
+.pagination li a:hover {
+    background: #008C45;
+    color: white;
+    border-color: #008C45;
+}
+
+.pagination li.active span {
+    background: #008C45;
+    color: white;
+    border-color: #008C45;
+}
+
+.pagination li.disabled span {
+    color: #999;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
 
 
 @media (max-width: 768px) {
@@ -486,6 +555,11 @@ tr:hover {
         flex-direction: column;
         gap: 10px;
         text-align: center;
+    }
+    
+    .header-flow {
+        flex-direction: column;
+        gap: 10px;
     }
     
     .sidebar {
@@ -518,13 +592,13 @@ tr:hover {
         font-size: 12px;
     }
     
-    .btn-warning-sm, .btn-danger-sm {
+    .btn-warning-sm, .btn-danger-sm, .btn-success-sm, .btn-detail, .btn-facturer, .btn-decaisser {
         padding: 3px 8px;
         font-size: 10px;
     }
 }
 
-@media (min-width: 770px) and (max-width: 927px) {
+@media (min-width: 769px) and (max-width: 927px) {
     .row {
         display: flex;
         flex-wrap: nowrap !important;

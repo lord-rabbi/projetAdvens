@@ -14,6 +14,33 @@ if ($_SESSION['id_role'] != 3) {
 
 $erreur = '';
 $succes = '';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+function getLibelleStatut($statut) {
+    switch ($statut) {
+        case 'pending': return 'Attente de validation';
+        case 'pendinglogistique': return 'Attente facture';
+        case 'facturee': return 'Attente de paiement';
+        case 'confirmee': return 'Décaissée';
+        case 'rejetee': return 'Rejetée';
+        case 'annulee': return 'Annulée';
+        default: return $statut;
+    }
+}
+
+function getBadgeClass($statut) {
+    switch ($statut) {
+        case 'pending': return 'badge-attente';
+        case 'pendinglogistique': return 'badge-logistique';
+        case 'facturee': return 'badge-facturee';
+        case 'confirmee': return 'badge-succes';
+        case 'rejetee': return 'badge-rejet';
+        case 'annulee': return 'badge-annule';
+        default: return '';
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'facturer') {
@@ -23,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'facturation', 'facturee', ?)";
             $stmt_log = $pdo->prepare($sql_log);
             $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
-            header('Location: dashboard.php');
+            header('Location: logistique/dashboard.php?page=' . $page);
             exit();
         } else {
             $erreur = 'Erreur lors de la facturation.';
@@ -37,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'decaissement', 'confirmee', ?)";
             $stmt_log = $pdo->prepare($sql_log);
             $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
-            header('Location: dashboard.php');
+            header('Location: logistique/dashboard.php?page=' . $page);
             exit();
         } else {
             $erreur = 'Erreur lors du decaissement.';
@@ -45,13 +72,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$total_stmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM demandes d
+    WHERE d.statut = 'pendinglogistique' OR d.statut = 'facturee'
+");
+$total_stmt->execute();
+$total = $total_stmt->fetchColumn();
+$total_pages = ceil($total / $limit);
+
 $stmt = $pdo->prepare("
-SELECT d.*, u.nom, u.prenom, dep.departement
-FROM demandes d
-JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-LEFT JOIN departements dep ON u.id_departement = dep.id_departement
-WHERE d.statut = 'pendinglogistique' OR d.statut = 'facturee'
-ORDER BY d.date_creation DESC
+    SELECT d.*, u.nom, u.prenom, dep.departement
+    FROM demandes d
+    JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+    LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+    WHERE d.statut = 'pendinglogistique' OR d.statut = 'facturee'
+    ORDER BY d.date_creation DESC
+    LIMIT $limit OFFSET $offset
 ");
 $stmt->execute();
 $demandes = $stmt->fetchAll();
@@ -119,15 +156,14 @@ $demandes = $stmt->fetchAll();
                                     <th>Piece jointe</th>
                                     <th>Date</th>
                                     <th>Actions</th>
-                                <tr>
+                                </td>
                             </thead>
                             <tbody id="demandesTableBody">
                                 <?php foreach ($demandes as $demande): ?>
                                     <?php
                                     $statut = $demande['statut'];
-                                    $badge = '';
-                                    if ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-                                    elseif ($statut == 'facturee') $badge = 'badge-facturee';
+                                    $libelle = getLibelleStatut($statut);
+                                    $badge = getBadgeClass($statut);
                                     ?>
                                     <tr>
                                         <td><?php echo $demande['id_demande']; ?></td>
@@ -140,13 +176,13 @@ $demandes = $stmt->fetchAll();
                                                 data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                                                 data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
                                                 data-date="<?php echo $demande['date_creation']; ?>"
-                                                data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                                                data-statut="<?php echo $libelle; ?>"
                                                 data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
                                                 <i class="fas fa-eye me-1"></i> Voir
                                             </button>
                                         </td>
                                         <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                        <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+                                        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
                                         <td>
                                             <?php if ($demande['piece_jointe']): ?>
                                                 <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -177,6 +213,36 @@ $demandes = $stmt->fetchAll();
                             </tbody>
                         </table>
                     </div>
+                    
+                    <?php if ($total_pages > 1): ?>
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> demandes)
+                        </div>
+                        <ul class="pagination">
+                            <?php if ($page > 1): ?>
+                                <li><a href="?page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                            <?php else: ?>
+                                <li class="disabled"><span>« Précédent</span></li>
+                            <?php endif; ?>
+
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <?php if ($i == $page): ?>
+                                    <li class="active"><span><?php echo $i; ?></span></li>
+                                <?php else: ?>
+                                    <li><a href="?page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+
+                            <?php if ($page < $total_pages): ?>
+                                <li><a href="?page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                            <?php else: ?>
+                                <li class="disabled"><span>Suivant »</span></li>
+                            <?php endif; ?>
+                        </ul>
+                    </div>
+                    <?php endif; ?>
+                    
                 </div>
             </div>
         </div>
@@ -209,8 +275,9 @@ $demandes = $stmt->fetchAll();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function refreshDemandes() {
+            var page = <?php echo $page; ?>;
             $.ajax({
-                url: '../refresh.php?action=demandes',
+                url: '../refresh.php?action=demandes&page=' + page,
                 type: 'GET',
                 dataType: 'html',
                 success: function(data) {

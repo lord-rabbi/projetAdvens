@@ -8,6 +8,9 @@ if (!isset($_SESSION['id_utilisateur']) || $_SESSION['id_role'] != 1) {
 }
 
 $onglet = $_GET['onglet'] ?? 'utilisateurs';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
 
 $erreur = '';
 $succes = '';
@@ -192,47 +195,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </tr>
                 </thead>
                 <tbody id="utilisateursTableBody">
-                <?php
-                $stmt = $pdo->query("
-                    SELECT u.*, r.nom_role, d.departement 
-                    FROM utilisateurs u 
-                    LEFT JOIN roles r ON u.id_role = r.id_role 
-                    LEFT JOIN departements d ON u.id_departement = d.id_departement
-                    ORDER BY u.id_utilisateur ASC
-                ");
-                $i = 1;
-                while ($row = $stmt->fetch()):
-                ?>
-                    <tr>
-                        <td><?php echo $i++; ?></td>
-                        <td><?php echo htmlspecialchars($row['nom']); ?></td>
-                        <td><?php echo htmlspecialchars($row['prenom']); ?></td>
-                        <td><?php echo htmlspecialchars($row['email']); ?></td>
-                        <td><span class="badge-role"><?php echo $row['nom_role']; ?></span></td>
-                        <td><?php echo $row['departement'] ?? '-'; ?></td>
-                        <td class="actions">
-                            <button type="button" class="btn-modifier" data-bs-toggle="modal" data-bs-target="#modifierModal" 
-                                data-id="<?php echo $row['id_utilisateur']; ?>"
-                                data-nom="<?php echo htmlspecialchars($row['nom']); ?>"
-                                data-prenom="<?php echo htmlspecialchars($row['prenom']); ?>"
-                                data-email="<?php echo htmlspecialchars($row['email']); ?>"
-                                data-role="<?php echo $row['id_role']; ?>"
-                                data-departement="<?php echo $row['id_departement']; ?>">
-                                <i class="fas fa-edit"></i> Modifier
-                            </button>
-                            <?php if ($row['id_role'] != 1): ?>
-                                <a href="supprimer.php?id=<?php echo $row['id_utilisateur']; ?>" class="btn-supprimer" onclick="return confirm('Supprimer ?')">
-                                    <i class="fas fa-trash-alt"></i> Supprimer
-                                </a>
-                            <?php else: ?>
-                                <span class="btn-supprimer-disabled"><i class="fas fa-trash-alt"></i> Supprimer</span>
-                            <?php endif; ?>
-                        </td>
-                    <tr>
-                <?php endwhile; ?>
                 </tbody>
-            </table>
+            <table>
         </div>
+
+        <?php
+        $total_stmt = $pdo->query("SELECT COUNT(*) FROM utilisateurs");
+        $total = $total_stmt->fetchColumn();
+        $total_pages = ceil($total / $limit);
+        ?>
+        
+        <?php if ($total_pages > 1): ?>
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> utilisateurs)
+            </div>
+            <ul class="pagination">
+                <?php if ($page > 1): ?>
+                    <li><a href="?onglet=utilisateurs&page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>« Précédent</span></li>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if ($i == $page): ?>
+                        <li class="active"><span><?php echo $i; ?></span></li>
+                    <?php else: ?>
+                        <li><a href="?onglet=utilisateurs&page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($page < $total_pages): ?>
+                    <li><a href="?onglet=utilisateurs&page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>Suivant »</span></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
 
     <?php elseif ($onglet == 'demandes'): ?>
 
@@ -254,69 +254,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </tr>
                 </thead>
                 <tbody id="demandesTableBody">
-                <?php
-                $stmt = $pdo->query("
-                    SELECT d.*, CONCAT(u.nom, ' ', u.prenom) as demandeur, dep.departement
-                    FROM demandes d
-                    JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-                    LEFT JOIN departements dep ON u.id_departement = dep.id_departement
-                    ORDER BY d.id_demande DESC
-                ");
-                while ($row = $stmt->fetch()):
-                    $statut = $row['statut'];
-                    $badge = '';
-                    if ($statut == 'pending') $badge = 'badge-attente';
-                    elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-                    elseif ($statut == 'facturee') $badge = 'badge-facturee';
-                    elseif ($statut == 'confirmee') $badge = 'badge-succes';
-                    elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-                    elseif ($statut == 'annulee') $badge = 'badge-annule';
-                ?>
-                <tr>
-                    <td><?php echo $row['id_demande']; ?></td>
-                    <td><?php echo htmlspecialchars($row['objet']); ?></td>
-                    <td><?php echo number_format($row['montant_demande'], 2); ?> <?php echo $row['devise'] ?? 'USD'; ?></td>
-                    <td><?php echo htmlspecialchars($row['demandeur']); ?></td>
-                    <td><?php echo $row['departement'] ?? '-'; ?></td>
-                    <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
-                    <td>
-                        <?php if ($row['renvoyee'] == 1): ?>
-                            <span class="badge bg-warning text-dark">Oui</span>
-                        <?php else: ?>
-                            <span class="badge bg-secondary">Non</span>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <?php if ($row['piece_jointe']): ?>
-                            <a href="../<?php echo $row['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-download"></i> Voir
-                            </a>
-                        <?php else: ?>
-                            <span class="text-muted">Aucune</span>
-                        <?php endif; ?>
-                    </td>
-                    <td><?php echo $row['date_creation']; ?></td>
-                    <td class="actions">
-                        <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
-                            data-id="<?php echo $row['id_demande']; ?>"
-                            data-objet="<?php echo htmlspecialchars($row['objet']); ?>"
-                            data-montant="<?php echo number_format($row['montant_demande'], 2); ?>"
-                            data-devise="<?php echo $row['devise'] ?? 'USD'; ?>"
-                            data-demandeur="<?php echo htmlspecialchars($row['demandeur']); ?>"
-                            data-departement="<?php echo $row['departement'] ?? '-'; ?>"
-                            data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
-                            data-renvoyee="<?php echo $row['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
-                            data-justification="<?php echo htmlspecialchars($row['justification_rejet'] ?? ''); ?>"
-                            data-date="<?php echo $row['date_creation']; ?>"
-                            data-piece="<?php echo $row['piece_jointe'] ?? ''; ?>">
-                            <i class="fas fa-eye"></i> Voir
-                        </button>
-                    </p>
-                <tr>
-                <?php endwhile; ?>
                 </tbody>
             </table>
         </div>
+
+        <?php
+        $total_stmt = $pdo->query("SELECT COUNT(*) FROM demandes");
+        $total = $total_stmt->fetchColumn();
+        $total_pages = ceil($total / $limit);
+        ?>
+        
+        <?php if ($total_pages > 1): ?>
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> demandes)
+            </div>
+            <ul class="pagination">
+                <?php if ($page > 1): ?>
+                    <li><a href="?onglet=demandes&page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>« Précédent</span></li>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if ($i == $page): ?>
+                        <li class="active"><span><?php echo $i; ?></span></li>
+                    <?php else: ?>
+                        <li><a href="?onglet=demandes&page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($page < $total_pages): ?>
+                    <li><a href="?onglet=demandes&page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>Suivant »</span></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
 
     <?php else: ?>
 
@@ -332,39 +307,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="logsTableBody">
                 <?php
-                $stmt = $pdo->query("
+                $stmt = $pdo->prepare("
                     SELECT l.*, CONCAT(u.nom, ' ', u.prenom) as utilisateur, r.nom_role
                     FROM logs l
                     JOIN utilisateurs u ON l.id_utilisateur = u.id_utilisateur
                     LEFT JOIN roles r ON u.id_role = r.id_role
-                    ORDER BY l.id_log DESC LIMIT 200
+                    ORDER BY l.id_log DESC
+                    LIMIT $limit OFFSET $offset
                 ");
-                while ($row = $stmt->fetch()):
+                $stmt->execute();
+                $logs = $stmt->fetchAll();
+                foreach ($logs as $row):
                 ?>
-                    <tr>
-                        <td><?php echo $row['id_log']; ?></td>
-                        <td><?php echo $row['date_action']; ?></td>
-                        <td><?php echo htmlspecialchars($row['utilisateur']); ?></td>
-                        <td><?php echo $row['nom_role']; ?></td>
-                        <td>
-                            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#logDetailModal" 
-                                data-action="<?php echo $row['action']; ?>"
-                                data-statut="<?php echo $row['statut']; ?>"
-                                data-justification="<?php echo htmlspecialchars($row['justification'] ?? ''); ?>"
-                                data-id_demande="<?php echo $row['id_demande']; ?>"
-                                data-date="<?php echo $row['date_action']; ?>"
-                                data-utilisateur="<?php echo htmlspecialchars($row['utilisateur']); ?>"
-                                data-role="<?php echo $row['nom_role']; ?>">
-                                <i class="fas fa-eye"></i> Voir
-                            </button>
-                        </td>
-                    </tr>
-                <?php endwhile; ?>
+                <tr>
+                    <td><?php echo $row['id_log']; ?></td>
+                    <td><?php echo $row['date_action']; ?></td>
+                    <td><?php echo htmlspecialchars($row['utilisateur']); ?></td>
+                    <td><?php echo $row['nom_role']; ?></td>
+                    <td>
+                        <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#logDetailModal" 
+                            data-action="<?php echo $row['action']; ?>"
+                            data-statut="<?php echo $row['statut']; ?>"
+                            data-justification="<?php echo htmlspecialchars($row['justification'] ?? ''); ?>"
+                            data-id_demande="<?php echo $row['id_demande']; ?>"
+                            data-date="<?php echo $row['date_action']; ?>"
+                            data-utilisateur="<?php echo htmlspecialchars($row['utilisateur']); ?>"
+                            data-role="<?php echo $row['nom_role']; ?>">
+                            <i class="fas fa-eye"></i> Voir
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+
+        <?php
+        $total_stmt = $pdo->query("SELECT COUNT(*) FROM logs");
+        $total = $total_stmt->fetchColumn();
+        $total_pages = ceil($total / $limit);
+        ?>
+        
+        <?php if ($total_pages > 1): ?>
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> logs)
+            </div>
+            <ul class="pagination">
+                <?php if ($page > 1): ?>
+                    <li><a href="?onglet=logs&page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>« Précédent</span></li>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if ($i == $page): ?>
+                        <li class="active"><span><?php echo $i; ?></span></li>
+                    <?php else: ?>
+                        <li><a href="?onglet=logs&page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ($page < $total_pages): ?>
+                    <li><a href="?onglet=logs&page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                <?php else: ?>
+                    <li class="disabled"><span>Suivant »</span></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
 
     <?php endif; ?>
 </div>
@@ -569,8 +582,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 <script>
     function refreshUtilisateurs() {
+        var page = <?php echo $page; ?>;
         $.ajax({
-            url: '../refresh.php?action=utilisateurs',
+            url: '../refresh.php?action=utilisateurs&page=' + page,
             type: 'GET',
             dataType: 'html',
             success: function(data) {
@@ -580,8 +594,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     function refreshDemandes() {
+        var page = <?php echo $page; ?>;
         $.ajax({
-            url: '../refresh.php?action=demandes',
+            url: '../refresh.php?action=demandes&page=' + page,
             type: 'GET',
             dataType: 'html',
             success: function(data) {
@@ -591,8 +606,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     <?php if ($onglet == 'utilisateurs'): ?>
+        refreshUtilisateurs();
         setInterval(refreshUtilisateurs, 10000);
     <?php elseif ($onglet == 'demandes'): ?>
+        refreshDemandes();
         setInterval(refreshDemandes, 10000);
     <?php endif; ?>
 

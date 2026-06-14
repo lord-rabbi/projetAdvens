@@ -12,7 +12,45 @@ if ($_SESSION['id_role'] != 2) {
     exit();
 }
 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+function getLibelleStatut($statut) {
+    switch ($statut) {
+        case 'pending': return 'Attente de validation';
+        case 'pendinglogistique': return 'Attente facture';
+        case 'facturee': return 'Attente de paiement';
+        case 'confirmee': return 'Décaissée';
+        case 'rejetee': return 'Rejetée';
+        case 'annulee': return 'Annulée';
+        default: return $statut;
+    }
+}
+
+function getBadgeClass($statut) {
+    switch ($statut) {
+        case 'pending': return 'badge-attente';
+        case 'pendinglogistique': return 'badge-logistique';
+        case 'facturee': return 'badge-facturee';
+        case 'confirmee': return 'badge-succes';
+        case 'rejetee': return 'badge-rejet';
+        case 'annulee': return 'badge-annule';
+        default: return '';
+    }
+}
+
 $id_departement = $_SESSION['id_departement'];
+
+$total_stmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM demandes d
+    JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+    WHERE u.id_departement = ?
+");
+$total_stmt->execute([$id_departement]);
+$total = $total_stmt->fetchColumn();
+$total_pages = ceil($total / $limit);
 
 $stmt = $pdo->prepare("
     SELECT d.*, u.nom, u.prenom 
@@ -20,6 +58,7 @@ $stmt = $pdo->prepare("
     JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
     WHERE u.id_departement = ? 
     ORDER BY d.date_creation DESC
+    LIMIT $limit OFFSET $offset
 ");
 $stmt->execute([$id_departement]);
 $demandes = $stmt->fetchAll();
@@ -42,6 +81,7 @@ $demandes = $stmt->fetchAll();
         <img src="../assets/Advans_Congo_Logo.svg" alt="svg advans">
     </div>
     <h2>Historique des demandes</h2>
+    <a href="dashboard.php"><button class="btn-deconnexion">Retour</button></a>
     <a href="../logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
 </div>
 
@@ -64,7 +104,7 @@ $demandes = $stmt->fetchAll();
 
         <div class="content">
             <div class="card">
-                <h2>L'historique de  demandes</h2>
+                <h2>L'historique des demandes</h2>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
@@ -81,19 +121,14 @@ $demandes = $stmt->fetchAll();
                             <?php foreach ($demandes as $demande): ?>
                                 <?php
                                 $statut = $demande['statut'];
-                                $badge = '';
-                                if ($statut == 'pending') $badge = 'badge-attente';
-                                elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-                                elseif ($statut == 'facturee') $badge = 'badge-facturee';
-                                elseif ($statut == 'confirmee') $badge = 'badge-succes';
-                                elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-                                elseif ($statut == 'annulee') $badge = 'badge-annule';
+                                $libelle = getLibelleStatut($statut);
+                                $badge = getBadgeClass($statut);
                                 ?>
-                                <tr>
+                                <td>
                                     <td><?php echo $demande['id_demande']; ?></td>
                                     <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
                                     <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                    <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+                                    <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
                                     <td><?php echo $demande['date_creation']; ?></td>
                                     <td>
                                         <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
@@ -102,7 +137,7 @@ $demandes = $stmt->fetchAll();
                                             data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                                             data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
                                             data-date="<?php echo $demande['date_creation']; ?>"
-                                            data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                                            data-statut="<?php echo $libelle; ?>"
                                             data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                                             data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
                                             data-validation="<?php echo $demande['date_validation_chef'] ?? ''; ?>"
@@ -111,12 +146,42 @@ $demandes = $stmt->fetchAll();
                                             data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
                                             <i class="fas fa-eye"></i> Voir
                                         </button>
-                                    </td>
+                                    </tr>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                
+                <?php if ($total_pages > 1): ?>
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> demandes)
+                    </div>
+                    <ul class="pagination">
+                        <?php if ($page > 1): ?>
+                            <li><a href="?page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                        <?php else: ?>
+                            <li class="disabled"><span>« Précédent</span></li>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <?php if ($i == $page): ?>
+                                <li class="active"><span><?php echo $i; ?></span></li>
+                            <?php else: ?>
+                                <li><a href="?page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $total_pages): ?>
+                            <li><a href="?page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                        <?php else: ?>
+                            <li class="disabled"><span>Suivant »</span></li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+                
             </div>
         </div>
     </div>

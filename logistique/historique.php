@@ -12,12 +12,45 @@ if ($_SESSION['id_role'] != 3) {
     exit();
 }
 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+function getLibelleStatut($statut) {
+    switch ($statut) {
+        case 'pending': return 'Attente de validation';
+        case 'pendinglogistique': return 'Attente facture';
+        case 'facturee': return 'Attente de paiement';
+        case 'confirmee': return 'Décaissée';
+        case 'rejetee': return 'Rejetée';
+        case 'annulee': return 'Annulée';
+        default: return $statut;
+    }
+}
+
+function getBadgeClass($statut) {
+    switch ($statut) {
+        case 'pending': return 'badge-attente';
+        case 'pendinglogistique': return 'badge-logistique';
+        case 'facturee': return 'badge-facturee';
+        case 'confirmee': return 'badge-succes';
+        case 'rejetee': return 'badge-rejet';
+        case 'annulee': return 'badge-annule';
+        default: return '';
+    }
+}
+
+$total_stmt = $pdo->query("SELECT COUNT(*) FROM demandes");
+$total = $total_stmt->fetchColumn();
+$total_pages = ceil($total / $limit);
+
 $stmt = $pdo->prepare("
     SELECT d.*, u.nom, u.prenom, dep.departement
     FROM demandes d
     JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
     LEFT JOIN departements dep ON u.id_departement = dep.id_departement
     ORDER BY d.date_creation DESC
+    LIMIT $limit OFFSET $offset
 ");
 $stmt->execute();
 $demandes = $stmt->fetchAll();
@@ -39,6 +72,7 @@ $demandes = $stmt->fetchAll();
         <img src="../assets/Advans_Congo_Logo.svg" alt="svg advans">
     </div>
     <h2>Historique des demandes</h2>
+    <a href="dashboard.php"><button class="btn-deconnexion">Retour</button></a>
     <a href="../logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
 </div>
 
@@ -81,20 +115,15 @@ $demandes = $stmt->fetchAll();
                             <?php foreach ($demandes as $demande): ?>
                                 <?php
                                 $statut = $demande['statut'];
-                                $badge = '';
-                                if ($statut == 'pending') $badge = 'badge-attente';
-                                elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-                                elseif ($statut == 'facturee') $badge = 'badge-facturee';
-                                elseif ($statut == 'confirmee') $badge = 'badge-succes';
-                                elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-                                elseif ($statut == 'annulee') $badge = 'badge-annule';
+                                $libelle = getLibelleStatut($statut);
+                                $badge = getBadgeClass($statut);
                                 ?>
                                 <tr>
                                     <td><?php echo $demande['id_demande']; ?></td>
                                     <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
                                     <td><?php echo $demande['departement'] ?? '-'; ?></td>
                                     <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                    <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+                                    <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
                                     <td><?php echo $demande['date_creation']; ?></td>
                                     <td><?php echo $demande['date_facture'] ?? '-'; ?></td>
                                     <td><?php echo $demande['date_decaissement'] ?? '-'; ?></td>
@@ -106,7 +135,7 @@ $demandes = $stmt->fetchAll();
                                             data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
                                             data-departement="<?php echo $demande['departement'] ?? '-'; ?>"
                                             data-date="<?php echo $demande['date_creation']; ?>"
-                                            data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                                            data-statut="<?php echo $libelle; ?>"
                                             data-facture="<?php echo $demande['date_facture'] ?? ''; ?>"
                                             data-decaissement="<?php echo $demande['date_decaissement'] ?? ''; ?>"
                                             data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
@@ -119,6 +148,36 @@ $demandes = $stmt->fetchAll();
                         </tbody>
                     </table>
                 </div>
+                
+                <?php if ($total_pages > 1): ?>
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Page <?php echo $page; ?> sur <?php echo $total_pages; ?> (<?php echo $total; ?> demandes)
+                    </div>
+                    <ul class="pagination">
+                        <?php if ($page > 1): ?>
+                            <li><a href="?page=<?php echo $page - 1; ?>">« Précédent</a></li>
+                        <?php else: ?>
+                            <li class="disabled"><span>« Précédent</span></li>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <?php if ($i == $page): ?>
+                                <li class="active"><span><?php echo $i; ?></span></li>
+                            <?php else: ?>
+                                <li><a href="?page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $total_pages): ?>
+                            <li><a href="?page=<?php echo $page + 1; ?>">Suivant »</a></li>
+                        <?php else: ?>
+                            <li class="disabled"><span>Suivant »</span></li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+                
             </div>
         </div>
     </div>

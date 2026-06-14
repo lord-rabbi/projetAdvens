@@ -6,25 +6,48 @@ if (!isset($_SESSION['id_utilisateur'])) {
     exit();
 }
 
+function getLibelleStatut($statut) {
+    switch ($statut) {
+        case 'pending': return 'Attente de validation';
+        case 'pendinglogistique': return 'Attente facture';
+        case 'facturee': return 'Attente de paiement';
+        case 'confirmee': return 'Décaissée';
+        case 'rejetee': return 'Rejetée';
+        case 'annulee': return 'Annulée';
+        default: return $statut;
+    }
+}
+
+function getBadgeClass($statut) {
+    switch ($statut) {
+        case 'pending': return 'badge-attente';
+        case 'pendinglogistique': return 'badge-logistique';
+        case 'facturee': return 'badge-facturee';
+        case 'confirmee': return 'badge-succes';
+        case 'rejetee': return 'badge-rejet';
+        case 'annulee': return 'badge-annule';
+        default: return '';
+    }
+}
+
 $id_role = $_SESSION['id_role'];
 $action = $_GET['action'] ?? '';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
 
 if ($id_role == 4 && $action == 'mes_demandes') {
     $id_user = $_SESSION['id_utilisateur'];
     
-    $stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC");
+    $sql = "SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT $limit OFFSET $offset";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([$id_user]);
     $demandes = $stmt->fetchAll();
     
     foreach ($demandes as $demande):
         $statut = $demande['statut'];
-        $badge = '';
-        if ($statut == 'pending') $badge = 'badge-attente';
-        elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-        elseif ($statut == 'facturee') $badge = 'badge-facturee';
-        elseif ($statut == 'confirmee') $badge = 'badge-succes';
-        elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-        elseif ($statut == 'annulee') $badge = 'badge-annule';
+        $libelle = getLibelleStatut($statut);
+        $badge = getBadgeClass($statut);
     ?>
     <tr>
         <td><?php echo $demande['id_demande']; ?></td>
@@ -35,7 +58,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                 data-demandeur="<?php echo $_SESSION['prenom'] . ' ' . $_SESSION['nom']; ?>"
                 data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                data-statut="<?php echo $libelle; ?>"
                 data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                 data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
                 data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
@@ -43,7 +66,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
             </button>
         </td>
         <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
         <td>
             <?php if ($demande['renvoyee'] == 1): ?>
                 <span class="badge bg-warning text-dark">Oui</span>
@@ -56,7 +79,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
             <?php if ($statut == 'rejetee' && !empty($demande['justification_rejet'])): ?>
                 <?php echo htmlspecialchars(substr($demande['justification_rejet'], 0, 50)); ?>...
             <?php elseif ($statut == 'rejetee'): ?>
-                <span class="text-danger">Rejetee</span>
+                <span class="text-danger">Rejetée</span>
             <?php else: ?>
                 -
             <?php endif; ?>
@@ -75,25 +98,22 @@ if ($id_role == 4 && $action == 'mes_demandes') {
 } elseif ($id_role == 2 && $action == 'demandes') {
     $id_departement = $_SESSION['id_departement'];
     
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT d.*, u.nom, u.prenom 
         FROM demandes d
         JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
         WHERE u.id_departement = ? 
         ORDER BY d.date_creation DESC
-    ");
+        LIMIT $limit OFFSET $offset
+    ";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute([$id_departement]);
     $demandes = $stmt->fetchAll();
     
     foreach ($demandes as $demande):
         $statut = $demande['statut'];
-        $badge = '';
-        if ($statut == 'pending') $badge = 'badge-attente';
-        elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-        elseif ($statut == 'facturee') $badge = 'badge-facturee';
-        elseif ($statut == 'confirmee') $badge = 'badge-succes';
-        elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-        elseif ($statut == 'annulee') $badge = 'badge-annule';
+        $libelle = getLibelleStatut($statut);
+        $badge = getBadgeClass($statut);
     ?>
     <tr>
         <td><?php echo $demande['id_demande']; ?></td>
@@ -105,7 +125,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                 data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
                 data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                data-statut="<?php echo $libelle; ?>"
                 data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                 data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
                 data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
@@ -113,7 +133,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
             </button>
         </td>
         <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
         <td>
             <?php if ($demande['renvoyee'] == 1): ?>
                 <span class="badge bg-warning text-dark">Oui</span>
@@ -141,7 +161,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 <form method="POST" style="display:inline-block;">
                     <input type="hidden" name="action" value="reactiver">
                     <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-warning-sm">Revenir</button>
+                    <button type="submit" class="btn-warning-sm">Revenir sur rejet</button>
                 </form>
             <?php endif; ?>
         </td>
@@ -149,22 +169,23 @@ if ($id_role == 4 && $action == 'mes_demandes') {
     <?php endforeach;
     
 } elseif ($id_role == 3 && $action == 'demandes') {
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT d.*, u.nom, u.prenom, dep.departement
         FROM demandes d
         JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
         LEFT JOIN departements dep ON u.id_departement = dep.id_departement
         WHERE d.statut = 'pendinglogistique' OR d.statut = 'facturee'
         ORDER BY d.date_creation DESC
-    ");
+        LIMIT $limit OFFSET $offset
+    ";
+    $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $demandes = $stmt->fetchAll();
     
     foreach ($demandes as $demande):
         $statut = $demande['statut'];
-        $badge = '';
-        if ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-        elseif ($statut == 'facturee') $badge = 'badge-facturee';
+        $libelle = getLibelleStatut($statut);
+        $badge = getBadgeClass($statut);
     ?>
     <tr>
         <td><?php echo $demande['id_demande']; ?></td>
@@ -177,13 +198,13 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                 data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
                 data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                data-statut="<?php echo $libelle; ?>"
                 data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
                 <i class="fas fa-eye"></i>
             </button>
         </td>
         <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
         <td>
             <?php if ($demande['piece_jointe']): ?>
                 <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
@@ -197,13 +218,13 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 <form method="POST" style="display:inline-block;">
                     <input type="hidden" name="action" value="facturer">
                     <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-facturer">Facturer</button>
+                    <button type="submit" class="btn-facturer">Faire une facture</button>
                 </form>
             <?php elseif ($statut == 'facturee'): ?>
                 <form method="POST" style="display:inline-block;">
                     <input type="hidden" name="action" value="decaisser">
                     <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-decaisser">Decaisser</button>
+                    <button type="submit" class="btn-decaisser">Confirmer decaissement</button>
                 </form>
             <?php endif; ?>
         </td>
@@ -212,15 +233,20 @@ if ($id_role == 4 && $action == 'mes_demandes') {
     
 } elseif ($id_role == 1 && $action == 'utilisateurs') {
     
-    $stmt = $pdo->query("
+    $sql = "
         SELECT u.*, r.nom_role, d.departement 
         FROM utilisateurs u 
         LEFT JOIN roles r ON u.id_role = r.id_role 
         LEFT JOIN departements d ON u.id_departement = d.id_departement
         ORDER BY u.id_utilisateur ASC
-    ");
-    $i = 1;
-    while ($row = $stmt->fetch()):
+        LIMIT $limit OFFSET $offset
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $users = $stmt->fetchAll();
+    
+    $i = $offset + 1;
+    foreach ($users as $row):
     ?>
     <tr>
         <td><?php echo $i++; ?></td>
@@ -246,26 +272,26 @@ if ($id_role == 4 && $action == 'mes_demandes') {
             <?php endif; ?>
         </td>
     </tr>
-    <?php endwhile;
+    <?php endforeach;
     
 } elseif ($id_role == 1 && $action == 'demandes') {
     
-    $stmt = $pdo->query("
+    $sql = "
         SELECT d.*, CONCAT(u.nom, ' ', u.prenom) as demandeur, dep.departement
         FROM demandes d
         JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
         LEFT JOIN departements dep ON u.id_departement = dep.id_departement
         ORDER BY d.id_demande DESC
-    ");
-    while ($row = $stmt->fetch()):
+        LIMIT $limit OFFSET $offset
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $demandes = $stmt->fetchAll();
+    
+    foreach ($demandes as $row):
         $statut = $row['statut'];
-        $badge = '';
-        if ($statut == 'pending') $badge = 'badge-attente';
-        elseif ($statut == 'pendinglogistique') $badge = 'badge-logistique';
-        elseif ($statut == 'facturee') $badge = 'badge-facturee';
-        elseif ($statut == 'confirmee') $badge = 'badge-succes';
-        elseif ($statut == 'rejetee') $badge = 'badge-rejet';
-        elseif ($statut == 'annulee') $badge = 'badge-annule';
+        $libelle = getLibelleStatut($statut);
+        $badge = getBadgeClass($statut);
     ?>
     <tr>
         <td><?php echo $row['id_demande']; ?></td>
@@ -273,7 +299,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
         <td><?php echo number_format($row['montant_demande'], 2); ?> <?php echo $row['devise'] ?? 'USD'; ?></td>
         <td><?php echo htmlspecialchars($row['demandeur']); ?></td>
         <td><?php echo $row['departement'] ?? '-'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo str_replace('_', ' ', $statut); ?></span></td>
+        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
         <td>
             <?php if ($row['renvoyee'] == 1): ?>
                 <span class="badge bg-warning text-dark">Oui</span>
@@ -297,7 +323,7 @@ if ($id_role == 4 && $action == 'mes_demandes') {
                 data-devise="<?php echo $row['devise'] ?? 'USD'; ?>"
                 data-demandeur="<?php echo htmlspecialchars($row['demandeur']); ?>"
                 data-departement="<?php echo $row['departement'] ?? '-'; ?>"
-                data-statut="<?php echo str_replace('_', ' ', $statut); ?>"
+                data-statut="<?php echo $libelle; ?>"
                 data-renvoyee="<?php echo $row['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                 data-justification="<?php echo htmlspecialchars($row['justification_rejet'] ?? ''); ?>"
                 data-date="<?php echo $row['date_creation']; ?>"
@@ -306,6 +332,6 @@ if ($id_role == 4 && $action == 'mes_demandes') {
             </button>
         </td>
     </tr>
-    <?php endwhile;
+    <?php endforeach;
 }
 ?>
