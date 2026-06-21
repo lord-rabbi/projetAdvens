@@ -32,25 +32,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0777, true);
             }
-            $nom_fichier = time() . '_' . basename($_FILES['piece_jointe']['name']);
-            $chemin = $upload_dir . $nom_fichier;
-            if (move_uploaded_file($_FILES['piece_jointe']['tmp_name'], $chemin)) {
-                $piece_jointe = 'uploads/' . $nom_fichier;
+            $extension = strtolower(pathinfo($_FILES['piece_jointe']['name'], PATHINFO_EXTENSION));
+            $extensions_autorisees = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+            if (!in_array($extension, $extensions_autorisees)) {
+                $erreur = 'Type de fichier non autorise. (PDF, JPG, PNG, DOC, DOCX)';
+            } else {
+                $nom_fichier = time() . '_' . basename($_FILES['piece_jointe']['name']);
+                $chemin = $upload_dir . $nom_fichier;
+                if (move_uploaded_file($_FILES['piece_jointe']['tmp_name'], $chemin)) {
+                    $piece_jointe = 'uploads/' . $nom_fichier;
+                }
             }
         }
 
-        $sql = "INSERT INTO demandes (objet, montant_demande, devise, date_creation, id_demandeur, statut, piece_jointe)
-                VALUES (?, ?, ?, NOW(), ?, 'pending', ?)";
-        $stmt = $pdo->prepare($sql);
-        if ($stmt->execute([$objet, $montant, $devise, $id_user, $piece_jointe])) {
-            $id_demande = $pdo->lastInsertId();
-            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'creation', 'pending', ?)";
-            $stmt_log = $pdo->prepare($sql_log);
-            $stmt_log->execute([$id_user, $id_demande]);
-            header('Location: dashboard.php?page=mes_demandes');
-            exit();
-        } else {
-            $erreur = 'Erreur lors de l envoi.';
+        if (empty($erreur)) {
+            $sql = "INSERT INTO demandes (objet, montant_demande, devise, date_creation, id_demandeur, statut, piece_jointe)
+                    VALUES (?, ?, ?, NOW(), ?, 'pending', ?)";
+            $stmt = $pdo->prepare($sql);
+            if ($stmt->execute([$objet, $montant, $devise, $id_user, $piece_jointe])) {
+                $id_demande = $pdo->lastInsertId();
+                $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'creation', 'pending', ?)";
+                $stmt_log = $pdo->prepare($sql_log);
+                $stmt_log->execute([$id_user, $id_demande]);
+                header('Location: dashboard.php?page=mes_demandes');
+                exit();
+            } else {
+                $erreur = 'Erreur lors de l envoi.';
+            }
         }
     }
 }
@@ -93,8 +101,8 @@ if (isset($_GET['annuler']) && is_numeric($_GET['annuler'])) {
 }
 
 $page = $_GET['page'] ?? 'mes_demandes';
-$current_page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
-$limit = 10;
+$current_page = isset($_GET['p']) ? max(1, (int) $_GET['p']) : 1;
+$limit = 5;
 $offset = ($current_page - 1) * $limit;
 
 $total_stmt = $pdo->prepare("SELECT COUNT(*) FROM demandes WHERE id_demandeur = ?");
@@ -102,7 +110,7 @@ $total_stmt->execute([$id_user]);
 $total_demandes = $total_stmt->fetchColumn();
 $total_pages = ceil($total_demandes / $limit);
 
-$stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT $limit OFFSET $offset");
+$stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "");
 $stmt->execute([$id_user]);
 $mes_demandes = $stmt->fetchAll();
 
@@ -116,27 +124,43 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
     }
 }
 
-function getLibelleStatut($statut) {
+function getLibelleStatut($statut)
+{
     switch ($statut) {
-        case 'pending': return 'Attente de validation';
-        case 'pendinglogistique': return 'Attente facture';
-        case 'facturee': return 'Attente de paiement';
-        case 'confirmee': return 'Décaissée';
-        case 'rejetee': return 'Rejetée';
-        case 'annulee': return 'Annulée';
-        default: return $statut;
+        case 'pending':
+            return 'Attente de validation';
+        case 'pendinglogistique':
+            return 'Attente facture';
+        case 'facturee':
+            return 'Attente de paiement';
+        case 'confirmee':
+            return 'Décaissée';
+        case 'rejetee':
+            return 'Rejetée';
+        case 'annulee':
+            return 'Annulée';
+        default:
+            return $statut;
     }
 }
 
-function getBadgeClass($statut) {
+function getBadgeClass($statut)
+{
     switch ($statut) {
-        case 'pending': return 'badge-attente';
-        case 'pendinglogistique': return 'badge-logistique';
-        case 'facturee': return 'badge-facturee';
-        case 'confirmee': return 'badge-succes';
-        case 'rejetee': return 'badge-rejet';
-        case 'annulee': return 'badge-annule';
-        default: return '';
+        case 'pending':
+            return 'badge-attente';
+        case 'pendinglogistique':
+            return 'badge-logistique';
+        case 'facturee':
+            return 'badge-facturee';
+        case 'confirmee':
+            return 'badge-succes';
+        case 'rejetee':
+            return 'badge-rejet';
+        case 'annulee':
+            return 'badge-annule';
+        default:
+            return '';
     }
 }
 ?>
@@ -184,10 +208,12 @@ function getBadgeClass($statut) {
 
             <div class="content">
                 <?php if ($erreur): ?>
-                    <div class="alert alert-danger"><?php echo $erreur; ?></div>
+                    <div class="alert alert-danger" id="message-erreur"><?php echo $erreur; ?></div>
+                    <script>setTimeout(function(){ var msg = document.getElementById('message-erreur'); if(msg) msg.remove(); }, 3000);</script>
                 <?php endif; ?>
                 <?php if ($succes): ?>
-                    <div class="alert alert-success"><?php echo $succes; ?></div>
+                    <div class="alert alert-success" id="message-succes"><?php echo $succes; ?></div>
+                    <script>setTimeout(function(){ var msg = document.getElementById('message-succes'); if(msg) msg.remove(); }, 3000);</script>
                 <?php endif; ?>
 
                 <?php if ($page == 'nouvelle'): ?>
@@ -212,7 +238,7 @@ function getBadgeClass($statut) {
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Piece jointe</label>
-                                <input type="file" name="piece_jointe" class="form-control">
+                                <input type="file" name="piece_jointe" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                             </div>
                             <button type="submit" class="btn-submit">Envoyer</button>
                         </form>
@@ -259,7 +285,6 @@ function getBadgeClass($statut) {
                                         <th>Statut</th>
                                         <th>Renvoyee</th>
                                         <th>Date</th>
-                                        <th>Justification rejet</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -269,9 +294,10 @@ function getBadgeClass($statut) {
                                         $statut = $demande['statut'];
                                         $libelle = getLibelleStatut($statut);
                                         $badge = getBadgeClass($statut);
+                                        $id = $demande['id_demande'];
                                         ?>
-                                        <tr>
-                                            <td><?php echo $demande['id_demande']; ?></td>
+                                        <tr id="demande-<?php echo $id; ?>">
+                                            <td><?php echo $id; ?></td>
                                             <td>
                                                 <button type="button" class="btn-detail" data-bs-toggle="modal"
                                                     data-bs-target="#detailModal"
@@ -288,8 +314,11 @@ function getBadgeClass($statut) {
                                                 </button>
                                             </td>
                                             <td><?php echo number_format($demande['montant_demande'], 2); ?>
-                                                <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                            <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
+                                                <?php echo $demande['devise'] ?? 'USD'; ?>
+                                            </td>
+                                            <td class="statut-cell" id="statut-<?php echo $id; ?>">
+                                                <span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span>
+                                            </td>
                                             <td>
                                                 <?php if ($demande['renvoyee'] == 1): ?>
                                                     <span class="badge bg-warning text-dark">Oui</span>
@@ -307,13 +336,13 @@ function getBadgeClass($statut) {
                                                     -
                                                 <?php endif; ?>
                                             </td>
-                                            <td>
+                                            <td class="actions-cell" id="actions-<?php echo $id; ?>">
                                                 <?php if ($statut == 'rejetee'): ?>
-                                                    <a href="dashboard.php?page=modifier&modifier=<?php echo $demande['id_demande']; ?>"
+                                                    <a href="dashboard.php?page=modifier&modifier=<?php echo $id; ?>"
                                                         class="btn-warning-sm">Modifier</a>
                                                 <?php endif; ?>
                                                 <?php if ($statut == 'pending'): ?>
-                                                    <a href="dashboard.php?annuler=<?php echo $demande['id_demande']; ?>&page=mes_demandes&p=<?php echo $current_page; ?>"
+                                                    <a href="dashboard.php?annuler=<?php echo $id; ?>&page=mes_demandes&p=<?php echo $current_page; ?>"
                                                         class="btn-danger-sm" onclick="return confirm('Annuler ?')">Annuler</a>
                                                 <?php endif; ?>
                                             </td>
@@ -322,36 +351,37 @@ function getBadgeClass($statut) {
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         <?php if ($total_pages > 1): ?>
-                        <div class="pagination-container">
-                            <div class="pagination-info">
-                                Page <?php echo $current_page; ?> sur <?php echo $total_pages; ?> (<?php echo $total_demandes; ?> demandes)
-                            </div>
-                            <ul class="pagination">
-                                <?php if ($current_page > 1): ?>
-                                    <li><a href="?page=mes_demandes&p=<?php echo $current_page - 1; ?>">« Précédent</a></li>
-                                <?php else: ?>
-                                    <li class="disabled"><span>« Précédent</span></li>
-                                <?php endif; ?>
-
-                                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <?php if ($i == $current_page): ?>
-                                        <li class="active"><span><?php echo $i; ?></span></li>
+                            <div class="pagination-container">
+                                <div class="pagination-info">
+                                    Page <?php echo $current_page; ?> sur <?php echo $total_pages; ?>
+                                    (<?php echo $total_demandes; ?> demandes)
+                                </div>
+                                <ul class="pagination">
+                                    <?php if ($current_page > 1): ?>
+                                        <li><a href="?page=mes_demandes&p=<?php echo $current_page - 1; ?>">« Précédent</a></li>
                                     <?php else: ?>
-                                        <li><a href="?page=mes_demandes&p=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                                        <li class="disabled"><span>« Précédent</span></li>
                                     <?php endif; ?>
-                                <?php endfor; ?>
 
-                                <?php if ($current_page < $total_pages): ?>
-                                    <li><a href="?page=mes_demandes&p=<?php echo $current_page + 1; ?>">Suivant »</a></li>
-                                <?php else: ?>
-                                    <li class="disabled"><span>Suivant »</span></li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
+                                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                        <?php if ($i == $current_page): ?>
+                                            <li class="active"><span><?php echo $i; ?></span></li>
+                                        <?php else: ?>
+                                            <li><a href="?page=mes_demandes&p=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+                                        <?php endif; ?>
+                                    <?php endfor; ?>
+
+                                    <?php if ($current_page < $total_pages): ?>
+                                        <li><a href="?page=mes_demandes&p=<?php echo $current_page + 1; ?>">Suivant »</a></li>
+                                    <?php else: ?>
+                                        <li class="disabled"><span>Suivant »</span></li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
                         <?php endif; ?>
-                        
+
                     </div>
                 <?php endif; ?>
             </div>
@@ -393,16 +423,49 @@ function getBadgeClass($statut) {
             $.ajax({
                 url: 'refresh.php?action=mes_demandes&p=' + page,
                 type: 'GET',
-                dataType: 'html',
+                dataType: 'json',
                 success: function(data) {
-                    $('#demandesTableBody').html(data);
+                    if (data.error) {
+                        return;
+                    }
+                    var idsActifs = [];
+                    $.each(data, function(index, item) {
+                        idsActifs.push(item.id);
+                        if ($('#statut-' + item.id).length > 0) {
+                            $('#statut-' + item.id).html(item.statut_html);
+                            $('#actions-' + item.id).html(item.actions_html);
+                            $('#demande-' + item.id + ' td:eq(4)').html(item.renvoyee_badge);
+                        } else {
+                            var newRow = '<tr id="demande-' + item.id + '">' +
+                                '<td>' + item.id + '</td>' +
+                                '<td><button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" ' +
+                                'data-objet="' + item.objet + '" data-montant="' + item.montant + '" ' +
+                                'data-devise="' + item.devise + '" data-demandeur="' + item.demandeur + '" ' +
+                                'data-date="' + item.date + '" data-statut="' + item.libelle + '" ' +
+                                'data-renvoyee="' + item.renvoyee + '" data-justification="' + item.justification + '" ' +
+                                'data-piece="' + item.piece + '"><i class="fas fa-eye me-1"></i> Voir</button></td>' +
+                                '<td>' + item.montant + ' ' + item.devise + '</td>' +
+                                '<td class="statut-cell" id="statut-' + item.id + '">' + item.statut_html + '</td>' +
+                                '<td>' + item.renvoyee_badge + '</td>' +
+                                '<td>' + item.date + '</td>' +
+                                '<td class="actions-cell" id="actions-' + item.id + '">' + item.actions_html + '</td>' +
+                                '</tr>';
+                            $('#demandesTableBody').append(newRow);
+                        }
+                    });
+                    $('tr[id^="demande-"]').each(function() {
+                        var id = $(this).attr('id').replace('demande-', '');
+                        if ($.inArray(parseInt(id), idsActifs) === -1) {
+                            $(this).remove();
+                        }
+                    });
                 }
             });
         }
         setInterval(refreshDemandes, 5000);
 
         const detailModal = document.getElementById('detailModal');
-        detailModal.addEventListener('show.bs.modal', function (event) {
+        detailModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             document.getElementById('detail_demandeur').innerText = button.getAttribute('data-demandeur');
             document.getElementById('detail_montant').innerText = button.getAttribute('data-montant');

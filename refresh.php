@@ -30,308 +30,232 @@ function getBadgeClass($statut) {
     }
 }
 
+function renderStatut($statut) {
+    $libelle = getLibelleStatut($statut);
+    $badge = getBadgeClass($statut);
+    return '<span class="badge ' . $badge . '">' . $libelle . '</span>';
+}
+
+function renderRenvoyee($renvoyee) {
+    if ($renvoyee == 1) {
+        return '<span class="badge bg-warning text-dark">Oui</span>';
+    } else {
+        return '<span class="badge bg-secondary">Non</span>';
+    }
+}
+
+function renderActionsDemandeur($statut, $id, $page) {
+    $html = '';
+    if ($statut == 'rejetee') {
+        $html .= '<a href="dashboard.php?page=modifier&modifier=' . $id . '" class="btn-warning-sm">Modifier</a>';
+    }
+    if ($statut == 'pending') {
+        $html .= '<a href="dashboard.php?annuler=' . $id . '&page=mes_demandes&p=' . $page . '" class="btn-danger-sm" onclick="return confirm(\'Annuler ?\')">Annuler</a>';
+    }
+    return $html;
+}
+
+function renderActionsChef($statut, $id) {
+    $html = '';
+    if ($statut == 'pending') {
+        $html .= '<form method="POST" style="display:inline-block;">
+                    <input type="hidden" name="action" value="valider">
+                    <input type="hidden" name="id_demande" value="' . $id . '">
+                    <button type="submit" class="btn-success-sm">Valider</button>
+                  </form>
+                  <button type="button" class="btn-danger-sm" data-bs-toggle="modal" data-bs-target="#rejetModal" data-id="' . $id . '">Rejeter</button>';
+    } elseif ($statut == 'rejetee') {
+        $html .= '<form method="POST" style="display:inline-block;">
+                    <input type="hidden" name="action" value="reactiver">
+                    <input type="hidden" name="id_demande" value="' . $id . '">
+                    <button type="submit" class="btn-warning-sm">Revenir sur rejet</button>
+                  </form>';
+    }
+    return $html;
+}
+
+function renderActionsLogistique($statut, $id) {
+    $html = '';
+    if ($statut == 'pendinglogistique') {
+        $html .= '<form method="POST" style="display:inline-block;">
+                    <input type="hidden" name="action" value="facturer">
+                    <input type="hidden" name="id_demande" value="' . $id . '">
+                    <button type="submit" class="btn-facturer">Facturer</button>
+                  </form>';
+    } elseif ($statut == 'facturee') {
+        $html .= '<form method="POST" style="display:inline-block;">
+                    <input type="hidden" name="action" value="decaisser">
+                    <input type="hidden" name="id_demande" value="' . $id . '">
+                    <button type="submit" class="btn-decaisser">Decaisser</button>
+                  </form>';
+    }
+    return $html;
+}
+
 $id_role = $_SESSION['id_role'];
 $action = $_GET['action'] ?? '';
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 10;
+$page = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
+$limit = 5;
 $offset = ($page - 1) * $limit;
 
-if ($id_role == 4 && $action == 'mes_demandes') {
-    $id_user = $_SESSION['id_utilisateur'];
+$actions_autorisees = ['mes_demandes', 'demandes', 'historique', 'historique_chef'];
+if (!in_array($action, $actions_autorisees)) {
+    exit();
+}
+
+$response = array();
+
+try {
+    if ($id_role == 4 && $action == 'mes_demandes') {
+        $id_user = $_SESSION['id_utilisateur'];
+        
+        $sql = "SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id_user]);
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $libelle = getLibelleStatut($statut);
+            $response[] = array(
+                'id' => $id,
+                'objet' => htmlspecialchars($demande['objet']),
+                'montant' => number_format($demande['montant_demande'], 2),
+                'devise' => $demande['devise'] ?? 'USD',
+                'demandeur' => $_SESSION['prenom'] . ' ' . $_SESSION['nom'],
+                'date' => $demande['date_creation'],
+                'libelle' => $libelle,
+                'renvoyee' => $demande['renvoyee'] == 1 ? 'Oui' : 'Non',
+                'renvoyee_badge' => renderRenvoyee($demande['renvoyee']),
+                'justification' => htmlspecialchars($demande['justification_rejet'] ?? ''),
+                'piece' => $demande['piece_jointe'] ?? '',
+                'statut_html' => renderStatut($statut),
+                'actions_html' => renderActionsDemandeur($statut, $id, $page)
+            );
+        }
+        
+    } elseif ($id_role == 2 && $action == 'demandes') {
+        $id_departement = $_SESSION['id_departement'];
+        
+        $sql = "
+            SELECT d.*, u.nom, u.prenom 
+            FROM demandes d
+            JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+            WHERE u.id_departement = ? AND (d.statut = 'pending' OR d.statut = 'rejetee')
+            ORDER BY d.date_creation DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id_departement]);
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $libelle = getLibelleStatut($statut);
+            $response[] = array(
+                'id' => $id,
+                'demandeur' => htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']),
+                'objet' => htmlspecialchars($demande['objet']),
+                'montant' => number_format($demande['montant_demande'], 2),
+                'devise' => $demande['devise'] ?? 'USD',
+                'date' => $demande['date_creation'],
+                'libelle' => $libelle,
+                'renvoyee' => $demande['renvoyee'] == 1 ? 'Oui' : 'Non',
+                'renvoyee_badge' => renderRenvoyee($demande['renvoyee']),
+                'justification' => htmlspecialchars($demande['justification_rejet'] ?? ''),
+                'piece' => $demande['piece_jointe'] ?? '',
+                'statut_html' => renderStatut($statut),
+                'actions_html' => renderActionsChef($statut, $id)
+            );
+        }
+        
+    } elseif ($id_role == 2 && $action == 'historique_chef') {
+        $id_departement = $_SESSION['id_departement'];
+        
+        $sql = "
+            SELECT d.id_demande, d.statut
+            FROM demandes d
+            JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+            WHERE u.id_departement = ?
+            ORDER BY d.date_creation DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id_departement]);
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $response[] = array(
+                'id' => $id,
+                'statut_html' => renderStatut($statut)
+            );
+        }
+        
+    } elseif ($id_role == 3 && $action == 'demandes') {
+        $sql = "
+            SELECT d.*, u.nom, u.prenom, dep.departement
+            FROM demandes d
+            JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+            LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+            WHERE d.statut IN ('pendinglogistique', 'facturee')
+            ORDER BY d.date_creation DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $libelle = getLibelleStatut($statut);
+            $response[] = array(
+                'id' => $id,
+                'demandeur' => htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']),
+                'departement' => $demande['departement'] ?? '-',
+                'objet' => htmlspecialchars($demande['objet']),
+                'montant' => number_format($demande['montant_demande'], 2),
+                'devise' => $demande['devise'] ?? 'USD',
+                'date' => $demande['date_creation'],
+                'libelle' => $libelle,
+                'piece' => $demande['piece_jointe'] ?? '',
+                'statut_html' => renderStatut($statut),
+                'actions_html' => renderActionsLogistique($statut, $id)
+            );
+        }
+        
+    } elseif ($id_role == 3 && $action == 'historique') {
+        $sql = "
+            SELECT d.id_demande, d.statut
+            FROM demandes d
+            JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+            LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+            WHERE d.statut = 'confirmee'
+            ORDER BY d.date_decaissement DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $response[] = array(
+                'id' => $id,
+                'statut_html' => renderStatut($statut)
+            );
+        }
+    }
     
-    $sql = "SELECT * FROM demandes WHERE id_demandeur = ? ORDER BY date_creation DESC LIMIT $limit OFFSET $offset";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$id_user]);
-    $demandes = $stmt->fetchAll();
+    header('Content-Type: application/json');
+    echo json_encode($response);
     
-    foreach ($demandes as $demande):
-        $statut = $demande['statut'];
-        $libelle = getLibelleStatut($statut);
-        $badge = getBadgeClass($statut);
-    ?>
-    <tr>
-        <td><?php echo $demande['id_demande']; ?></td>
-        <td>
-            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
-                data-objet="<?php echo htmlspecialchars($demande['objet']); ?>"
-                data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
-                data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
-                data-demandeur="<?php echo $_SESSION['prenom'] . ' ' . $_SESSION['nom']; ?>"
-                data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo $libelle; ?>"
-                data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
-                data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
-                data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
-                <i class="fas fa-eye"></i>
-            </button>
-        </td>
-        <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
-        <td>
-            <?php if ($demande['renvoyee'] == 1): ?>
-                <span class="badge bg-warning text-dark">Oui</span>
-            <?php else: ?>
-                <span class="badge bg-secondary">Non</span>
-            <?php endif; ?>
-        </td>
-        <td><?php echo $demande['date_creation']; ?></td>
-        <td>
-            <?php if ($statut == 'rejetee' && !empty($demande['justification_rejet'])): ?>
-                <?php echo htmlspecialchars(substr($demande['justification_rejet'], 0, 50)); ?>...
-            <?php elseif ($statut == 'rejetee'): ?>
-                <span class="text-danger">Rejetée</span>
-            <?php else: ?>
-                -
-            <?php endif; ?>
-        </td>
-        <td>
-            <?php if ($statut == 'rejetee'): ?>
-                <a href="dashboard.php?page=modifier&modifier=<?php echo $demande['id_demande']; ?>" class="btn-warning-sm">Modifier</a>
-            <?php endif; ?>
-            <?php if ($statut == 'pending'): ?>
-                <a href="dashboard.php?annuler=<?php echo $demande['id_demande']; ?>&page=mes_demandes" class="btn-danger-sm" onclick="return confirm('Annuler ?')">Annuler</a>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <?php endforeach;
-    
-} elseif ($id_role == 2 && $action == 'demandes') {
-    $id_departement = $_SESSION['id_departement'];
-    
-    $sql = "
-        SELECT d.*, u.nom, u.prenom 
-        FROM demandes d
-        JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-        WHERE u.id_departement = ? 
-        ORDER BY d.date_creation DESC
-        LIMIT $limit OFFSET $offset
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$id_departement]);
-    $demandes = $stmt->fetchAll();
-    
-    foreach ($demandes as $demande):
-        $statut = $demande['statut'];
-        $libelle = getLibelleStatut($statut);
-        $badge = getBadgeClass($statut);
-    ?>
-    <tr>
-        <td><?php echo $demande['id_demande']; ?></td>
-        <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
-        <td>
-            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
-                data-objet="<?php echo htmlspecialchars($demande['objet']); ?>"
-                data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
-                data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
-                data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
-                data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo $libelle; ?>"
-                data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
-                data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
-                data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
-                <i class="fas fa-eye"></i>
-            </button>
-        </td>
-        <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
-        <td>
-            <?php if ($demande['renvoyee'] == 1): ?>
-                <span class="badge bg-warning text-dark">Oui</span>
-            <?php else: ?>
-                <span class="badge bg-secondary">Non</span>
-            <?php endif; ?>
-        </td>
-        <td>
-            <?php if ($demande['piece_jointe']): ?>
-                <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
-            <?php else: ?>
-                <span class="text-muted">Aucune</span>
-            <?php endif; ?>
-        </td>
-        <td><?php echo $demande['date_creation']; ?></td>
-        <td>
-            <?php if ($statut == 'pending'): ?>
-                <form method="POST" style="display:inline-block;">
-                    <input type="hidden" name="action" value="valider">
-                    <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-success-sm">Valider</button>
-                </form>
-                <button type="button" class="btn-danger-sm" data-bs-toggle="modal" data-bs-target="#rejetModal" data-id="<?php echo $demande['id_demande']; ?>">Rejeter</button>
-            <?php elseif ($statut == 'rejetee'): ?>
-                <form method="POST" style="display:inline-block;">
-                    <input type="hidden" name="action" value="reactiver">
-                    <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-warning-sm">Revenir sur rejet</button>
-                </form>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <?php endforeach;
-    
-} elseif ($id_role == 3 && $action == 'demandes') {
-    $sql = "
-        SELECT d.*, u.nom, u.prenom, dep.departement
-        FROM demandes d
-        JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-        LEFT JOIN departements dep ON u.id_departement = dep.id_departement
-        WHERE d.statut = 'pendinglogistique' OR d.statut = 'facturee'
-        ORDER BY d.date_creation DESC
-        LIMIT $limit OFFSET $offset
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $demandes = $stmt->fetchAll();
-    
-    foreach ($demandes as $demande):
-        $statut = $demande['statut'];
-        $libelle = getLibelleStatut($statut);
-        $badge = getBadgeClass($statut);
-    ?>
-    <tr>
-        <td><?php echo $demande['id_demande']; ?></td>
-        <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
-        <td><?php echo $demande['departement'] ?? '-'; ?></td>
-        <td>
-            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
-                data-objet="<?php echo htmlspecialchars($demande['objet']); ?>"
-                data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
-                data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
-                data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
-                data-date="<?php echo $demande['date_creation']; ?>"
-                data-statut="<?php echo $libelle; ?>"
-                data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
-                <i class="fas fa-eye"></i>
-            </button>
-        </td>
-        <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
-        <td>
-            <?php if ($demande['piece_jointe']): ?>
-                <a href="../<?php echo $demande['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
-            <?php else: ?>
-                <span class="text-muted">Aucune</span>
-            <?php endif; ?>
-        </td>
-        <td><?php echo $demande['date_creation']; ?></td>
-        <td>
-            <?php if ($statut == 'pendinglogistique'): ?>
-                <form method="POST" style="display:inline-block;">
-                    <input type="hidden" name="action" value="facturer">
-                    <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-facturer">Faire une facture</button>
-                </form>
-            <?php elseif ($statut == 'facturee'): ?>
-                <form method="POST" style="display:inline-block;">
-                    <input type="hidden" name="action" value="decaisser">
-                    <input type="hidden" name="id_demande" value="<?php echo $demande['id_demande']; ?>">
-                    <button type="submit" class="btn-decaisser">Confirmer decaissement</button>
-                </form>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <?php endforeach;
-    
-} elseif ($id_role == 1 && $action == 'utilisateurs') {
-    
-    $sql = "
-        SELECT u.*, r.nom_role, d.departement 
-        FROM utilisateurs u 
-        LEFT JOIN roles r ON u.id_role = r.id_role 
-        LEFT JOIN departements d ON u.id_departement = d.id_departement
-        ORDER BY u.id_utilisateur ASC
-        LIMIT $limit OFFSET $offset
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $users = $stmt->fetchAll();
-    
-    $i = $offset + 1;
-    foreach ($users as $row):
-    ?>
-    <tr>
-        <td><?php echo $i++; ?></td>
-        <td><?php echo htmlspecialchars($row['nom']); ?></td>
-        <td><?php echo htmlspecialchars($row['prenom']); ?></td>
-        <td><?php echo htmlspecialchars($row['email']); ?></td>
-        <td><span class="badge-role"><?php echo $row['nom_role']; ?></span></td>
-        <td><?php echo $row['departement'] ?? '-'; ?></td>
-        <td class="actions">
-            <button type="button" class="btn-modifier" data-bs-toggle="modal" data-bs-target="#modifierModal" 
-                data-id="<?php echo $row['id_utilisateur']; ?>"
-                data-nom="<?php echo htmlspecialchars($row['nom']); ?>"
-                data-prenom="<?php echo htmlspecialchars($row['prenom']); ?>"
-                data-email="<?php echo htmlspecialchars($row['email']); ?>"
-                data-role="<?php echo $row['id_role']; ?>"
-                data-departement="<?php echo $row['id_departement']; ?>">
-                Modifier
-            </button>
-            <?php if ($row['id_role'] != 1): ?>
-                <a href="supprimer.php?id=<?php echo $row['id_utilisateur']; ?>" class="btn-supprimer" onclick="return confirm('Supprimer ?')">Supprimer</a>
-            <?php else: ?>
-                <span class="btn-supprimer-disabled">Supprimer</span>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <?php endforeach;
-    
-} elseif ($id_role == 1 && $action == 'demandes') {
-    
-    $sql = "
-        SELECT d.*, CONCAT(u.nom, ' ', u.prenom) as demandeur, dep.departement
-        FROM demandes d
-        JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-        LEFT JOIN departements dep ON u.id_departement = dep.id_departement
-        ORDER BY d.id_demande DESC
-        LIMIT $limit OFFSET $offset
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $demandes = $stmt->fetchAll();
-    
-    foreach ($demandes as $row):
-        $statut = $row['statut'];
-        $libelle = getLibelleStatut($statut);
-        $badge = getBadgeClass($statut);
-    ?>
-    <tr>
-        <td><?php echo $row['id_demande']; ?></td>
-        <td><?php echo htmlspecialchars($row['objet']); ?></td>
-        <td><?php echo number_format($row['montant_demande'], 2); ?> <?php echo $row['devise'] ?? 'USD'; ?></td>
-        <td><?php echo htmlspecialchars($row['demandeur']); ?></td>
-        <td><?php echo $row['departement'] ?? '-'; ?></td>
-        <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
-        <td>
-            <?php if ($row['renvoyee'] == 1): ?>
-                <span class="badge bg-warning text-dark">Oui</span>
-            <?php else: ?>
-                <span class="badge bg-secondary">Non</span>
-            <?php endif; ?>
-        </td>
-        <td>
-            <?php if ($row['piece_jointe']): ?>
-                <a href="../<?php echo $row['piece_jointe']; ?>" target="_blank" class="btn btn-sm btn-outline-primary">Voir</a>
-            <?php else: ?>
-                <span class="text-muted">Aucune</span>
-            <?php endif; ?>
-        </td>
-        <td><?php echo $row['date_creation']; ?></td>
-        <td>
-            <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
-                data-id="<?php echo $row['id_demande']; ?>"
-                data-objet="<?php echo htmlspecialchars($row['objet']); ?>"
-                data-montant="<?php echo number_format($row['montant_demande'], 2); ?>"
-                data-devise="<?php echo $row['devise'] ?? 'USD'; ?>"
-                data-demandeur="<?php echo htmlspecialchars($row['demandeur']); ?>"
-                data-departement="<?php echo $row['departement'] ?? '-'; ?>"
-                data-statut="<?php echo $libelle; ?>"
-                data-renvoyee="<?php echo $row['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
-                data-justification="<?php echo htmlspecialchars($row['justification_rejet'] ?? ''); ?>"
-                data-date="<?php echo $row['date_creation']; ?>"
-                data-piece="<?php echo $row['piece_jointe'] ?? ''; ?>">
-                Voir
-            </button>
-        </td>
-    </tr>
-    <?php endforeach;
+} catch (PDOException $e) {
+    echo json_encode(array('error' => 'Erreur de chargement des donnees'));
 }
 ?>

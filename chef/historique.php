@@ -12,8 +12,8 @@ if ($_SESSION['id_role'] != 2) {
     exit();
 }
 
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 10;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 5;
 $offset = ($page - 1) * $limit;
 
 function getLibelleStatut($statut) {
@@ -58,7 +58,7 @@ $stmt = $pdo->prepare("
     JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
     WHERE u.id_departement = ? 
     ORDER BY d.date_creation DESC
-    LIMIT $limit OFFSET $offset
+    LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
 ");
 $stmt->execute([$id_departement]);
 $demandes = $stmt->fetchAll();
@@ -71,7 +71,7 @@ $demandes = $stmt->fetchAll();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="../assets/dashboard.css">
+    <link rel="stylesheet" href="../assets/dashboard.css?v=2">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
@@ -81,7 +81,6 @@ $demandes = $stmt->fetchAll();
         <img src="../assets/Advans_Congo_Logo.svg" alt="svg advans">
     </div>
     <h2>Historique des demandes</h2>
-    <a href="dashboard.php"><button class="btn-deconnexion">Retour</button></a>
     <a href="../logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
 </div>
 
@@ -117,21 +116,25 @@ $demandes = $stmt->fetchAll();
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="demandesTableBody">
                             <?php foreach ($demandes as $demande): ?>
                                 <?php
                                 $statut = $demande['statut'];
                                 $libelle = getLibelleStatut($statut);
                                 $badge = getBadgeClass($statut);
+                                $id = $demande['id_demande'];
                                 ?>
-                                <td>
-                                    <td><?php echo $demande['id_demande']; ?></td>
+                                <tr id="demande-<?php echo $id; ?>">
+                                    <td><?php echo $id; ?></td>
                                     <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
                                     <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                    <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
+                                    <td class="statut-cell" id="statut-<?php echo $id; ?>">
+                                        <span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span>
+                                    </td>
                                     <td><?php echo $demande['date_creation']; ?></td>
                                     <td>
                                         <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
+                                            data-id="<?php echo $id; ?>"
                                             data-objet="<?php echo htmlspecialchars($demande['objet']); ?>"
                                             data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
                                             data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
@@ -144,9 +147,9 @@ $demandes = $stmt->fetchAll();
                                             data-facture="<?php echo $demande['date_facture'] ?? ''; ?>"
                                             data-decaissement="<?php echo $demande['date_decaissement'] ?? ''; ?>"
                                             data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
-                                            <i class="fas fa-eye"></i> Voir
+                                            <i class="fas fa-eye me-1"></i> Voir
                                         </button>
-                                    </tr>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -220,6 +223,24 @@ $demandes = $stmt->fetchAll();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function refreshDemandes() {
+        var page = <?php echo $page; ?>;
+        $.ajax({
+            url: '../refresh.php?action=historique_chef&page=' + page,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                if (data.error) {
+                    return;
+                }
+                $.each(data, function(index, item) {
+                    $('#statut-' + item.id).html(item.statut_html);
+                });
+            }
+        });
+    }
+    setInterval(refreshDemandes, 5000);
+
     const detailModal = document.getElementById('detailModal');
     detailModal.addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;

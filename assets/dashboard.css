@@ -451,47 +451,6 @@ tr:hover {
     line-height: 1.5;
 }
 
-.pagination {
-    display: flex;
-    gap: 5px;
-    list-style: none;
-    margin-top: 20px;
-    padding: 0;
-}
-
-.pagination li a, .pagination li span {
-    display: block;
-    padding: 8px 12px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    text-decoration: none;
-    color: #008C45;
-}
-
-.pagination li a:hover {
-    background: #008C45;
-    color: white;
-    border-color: #008C45;
-}
-
-.pagination li.active span {
-    background: #008C45;
-    color: white;
-    border-color: #008C45;
-}
-
-.pagination li.disabled span {
-    color: #999;
-    cursor: not-allowed;
-}
-
-.pagination-info {
-    margin-top: 20px;
-    color: #666;
-    font-size: 14px;
-}
-
 .pagination-container {
     display: flex;
     justify-content: space-between;
@@ -541,16 +500,54 @@ tr:hover {
     cursor: not-allowed;
 }
 
+.filters {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #e0e0e0;
+}
+
+.filters .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #282828;
+    margin-bottom: 4px;
+}
+
+.filters .form-control, .filters .form-select {
+    font-size: 14px;
+    padding: 8px 10px;
+}
+
+.filters .btn-primary {
+    background: #008C45;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 30px;
+}
+
+.filters .btn-primary:hover {
+    background: #006633;
+}
+
+.filters .btn-secondary {
+    background: #6c757d;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 30px;
+}
+
+.filters .btn-secondary:hover {
+    background: #5a6268;
+}
+
 @media (max-width: 768px) {
     .pagination-container {
         flex-direction: column;
         align-items: center;
     }
-}
 
-
-
-@media (max-width: 768px) {
     .header {
         flex-direction: column;
         gap: 10px;
