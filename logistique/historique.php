@@ -51,12 +51,12 @@ $where = " WHERE d.statut = 'confirmee'";
 $params = array();
 
 if (!empty($filtre_date_debut)) {
-    $where .= " AND DATE(d.date_creation) >= ?";
+    $where .= " AND DATE(d.date_decaissement) >= ?";
     $params[] = $filtre_date_debut;
 }
 
 if (!empty($filtre_date_fin)) {
-    $where .= " AND DATE(d.date_creation) <= ?";
+    $where .= " AND DATE(d.date_decaissement) <= ?";
     $params[] = $filtre_date_fin;
 }
 
@@ -146,10 +146,15 @@ $departements_list = $pdo->query("SELECT departement FROM departements ORDER BY 
 
         <div class="content">
             <div class="card">
-                <h2>Demandes décaissées</h2>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>Demandes décaissées</h2>
+                    <button type="submit" form="formFiltres" formaction="export.php" name="format" value="pdf" class="btn btn-primary">
+                        Exporter PDF
+                    </button>
+                </div>
 
                 <div class="filters">
-                    <form method="GET" class="row g-3">
+                    <form id="formFiltres" method="GET" action="historique.php" class="row g-3">
                         <input type="hidden" name="page" value="1">
 
                         <div class="col-md-2">

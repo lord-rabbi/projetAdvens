@@ -107,3 +107,4 @@ CREATE INDEX idx_logs_date ON logs(date_action);
 CREATE INDEX idx_utilisateurs_role ON utilisateurs(id_role);
 CREATE INDEX idx_utilisateurs_departement ON utilisateurs(id_departement);
 CREATE INDEX idx_utilisateurs_email ON utilisateurs(email);
+ c est bon 
