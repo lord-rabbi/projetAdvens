@@ -94,7 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if ($resultat) {
                 $succes = 'Utilisateur ajoute avec succes.';
-                echo '<meta http-equiv="refresh" content="1;url=index.php?onglet=utilisateurs">';
+                echo '<meta http-equiv="refresh" content="2;url=index.php?onglet=utilisateurs">';
+                exit();
             } else {
                 $erreur = 'Erreur lors de l ajout.';
             }
@@ -157,7 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if ($resultat) {
                 $succes = 'Utilisateur modifie avec succes.';
-                echo '<meta http-equiv="refresh" content="1;url=index.php?onglet=utilisateurs">';
+                echo '<meta http-equiv="refresh" content="2;url=index.php?onglet=utilisateurs">';
+                exit();
             } else {
                 $erreur = 'Erreur lors de la modification.';
             }
@@ -179,7 +181,6 @@ $total_pages_logs = ceil($count_logs / $limit);
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/admin.css?v=2">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
 <body>
@@ -427,6 +428,7 @@ $total_pages_logs = ceil($count_logs / $limit);
         <?php endif; ?>
     </div>
 
+    <!-- MODAL AJOUTER -->
     <div class="modal fade" id="ajouterModal" tabindex="-1" aria-labelledby="ajouterModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content">
@@ -436,7 +438,7 @@ $total_pages_logs = ceil($count_logs / $limit);
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" action="index.php?onglet=utilisateurs">
                     <input type="hidden" name="action" value="ajouter">
                     <div class="modal-body">
                         <div class="row">
@@ -498,6 +500,7 @@ $total_pages_logs = ceil($count_logs / $limit);
         </div>
     </div>
 
+    <!-- MODAL MODIFIER -->
     <div class="modal fade" id="modifierModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content">
@@ -507,7 +510,7 @@ $total_pages_logs = ceil($count_logs / $limit);
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" action="index.php?onglet=utilisateurs">
                     <input type="hidden" name="action" value="modifier_utilisateur">
                     <input type="hidden" name="id_utilisateur" id="modif_id">
                     <div class="modal-body">
@@ -570,6 +573,7 @@ $total_pages_logs = ceil($count_logs / $limit);
         </div>
     </div>
 
+    <!-- MODAL DETAIL DEMANDE -->
     <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
@@ -599,6 +603,7 @@ $total_pages_logs = ceil($count_logs / $limit);
         </div>
     </div>
 
+    <!-- MODAL DETAIL LOG -->
     <div class="modal fade" id="logDetailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -623,9 +628,47 @@ $total_pages_logs = ceil($count_logs / $limit);
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- MODAL DE TEST -->
+    <div class="modal fade" id="testModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">TEST MODAL</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>La modal fonctionne correctement !</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- BOUTON DE TEST -->
+    <button type="button" class="btn btn-danger mt-3" data-bs-toggle="modal" data-bs-target="#testModal">
+        TEST MODAL
+    </button>
+
+    <!-- LIENS VERS JQUERY ET BOOTSTRAP EN CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof $ !== 'undefined') {
+                console.log('jQuery chargé');
+            } else {
+                console.log('jQuery NON chargé');
+            }
+            
+            if (typeof bootstrap !== 'undefined') {
+                console.log('Bootstrap chargé');
+            } else {
+                console.log('Bootstrap NON chargé');
+            }
+        });
+
         function refreshDemandes() {
             var page = <?php echo $page; ?>;
             $.ajax({

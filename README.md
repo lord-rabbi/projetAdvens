@@ -2,7 +2,6 @@
 -- BASE DE DONNEES - SYSTEME DE GESTION DE DEMANDES
 -- =============================================
 
--- Création de la base de données
 CREATE DATABASE IF NOT EXISTS db_decaissement 
 CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
@@ -20,8 +19,9 @@ CREATE TABLE roles (
 INSERT INTO roles (id_role, nom_role) VALUES 
 (1, 'admin'),
 (2, 'chef'),
-(3, 'decaisseur'),
-(4, 'demandeur');
+(3, 'logistique'),
+(4, 'demandeur'),
+(5, 'superviseur');
 
 -- =============================================
 -- TABLE departements
@@ -69,9 +69,10 @@ CREATE TABLE demandes (
     devise VARCHAR(3) DEFAULT 'USD',
     date_creation DATETIME NOT NULL,
     id_demandeur INT NOT NULL,
-    statut ENUM('pending', 'pendinglogistique', 'facturee', 'confirmee', 'rejetee', 'annulee') DEFAULT 'pending',
+    statut ENUM('pending', 'pending_superviseur', 'pendinglogistique', 'facturee', 'confirmee', 'rejetee', 'annulee') DEFAULT 'pending',
     piece_jointe VARCHAR(255) NULL,
     date_validation_chef DATETIME NULL,
+    date_validation_superviseur DATETIME NULL,
     date_facture DATETIME NULL,
     date_decaissement DATETIME NULL,
     justification_rejet TEXT NULL,
@@ -107,4 +108,6 @@ CREATE INDEX idx_logs_date ON logs(date_action);
 CREATE INDEX idx_utilisateurs_role ON utilisateurs(id_role);
 CREATE INDEX idx_utilisateurs_departement ON utilisateurs(id_departement);
 CREATE INDEX idx_utilisateurs_email ON utilisateurs(email);
- c est bon 
+
+
+ installer composer require dompdf/dompd

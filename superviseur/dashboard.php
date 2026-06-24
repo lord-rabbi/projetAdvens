@@ -7,13 +7,11 @@ if (!isset($_SESSION['id_utilisateur'])) {
     exit();
 }
 
-if ($_SESSION['id_role'] != 2) {
+if ($_SESSION['id_role'] != 5) {
     header('Location: ../dashboard.php');
     exit();
 }
 
-$id_departement = $_SESSION['id_departement'];
-$id_user = $_SESSION['id_utilisateur'];
 $erreur = '';
 $succes = '';
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -65,85 +63,15 @@ function getBadgeClass($statut)
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'nouvelle_demande') {
-    $objet = trim($_POST['objet'] ?? '');
-    $montant = floatval($_POST['montant'] ?? 0);
-    $devise = $_POST['devise'] ?? 'USD';
-    $piece_jointe = '';
-
-    if (empty($objet)) {
-        $erreur = 'Le motif est obligatoire.';
-    } elseif ($montant <= 0) {
-        $erreur = 'Le montant doit etre superieur a 0.';
-    } else {
-        if (isset($_FILES['piece_jointe']) && $_FILES['piece_jointe']['error'] == 0) {
-            $upload_dir = '../uploads/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            $extension = strtolower(pathinfo($_FILES['piece_jointe']['name'], PATHINFO_EXTENSION));
-            $extensions_autorisees = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
-            if (!in_array($extension, $extensions_autorisees)) {
-                $erreur = 'Type de fichier non autorise. (PDF, JPG, PNG, DOC, DOCX)';
-            } else {
-                $nom_fichier = time() . '_' . basename($_FILES['piece_jointe']['name']);
-                $chemin = $upload_dir . $nom_fichier;
-                if (move_uploaded_file($_FILES['piece_jointe']['tmp_name'], $chemin)) {
-                    $piece_jointe = 'uploads/' . $nom_fichier;
-                }
-            }
-        }
-
-        if (empty($erreur)) {
-            $sql = "INSERT INTO demandes (objet, montant_demande, devise, date_creation, id_demandeur, statut, piece_jointe)
-                    VALUES (?, ?, ?, NOW(), ?, 'pending_superviseur', ?)";
-            $stmt = $pdo->prepare($sql);
-            if ($stmt->execute([$objet, $montant, $devise, $id_user, $piece_jointe])) {
-                $id_demande = $pdo->lastInsertId();
-                $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'creation_chef', 'pending_superviseur', ?)";
-                $stmt_log = $pdo->prepare($sql_log);
-                $stmt_log->execute([$id_user, $id_demande]);
-                $succes = 'Votre demande a ete envoyee au superviseur.';
-            } else {
-                $erreur = 'Erreur lors de l envoi.';
-            }
-        }
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'modifier_demande') {
-    $id_demande = $_POST['id_demande'] ?? 0;
-    $objet = trim($_POST['objet'] ?? '');
-    $montant = floatval($_POST['montant'] ?? 0);
-    $devise = $_POST['devise'] ?? 'USD';
-
-    if (empty($objet)) {
-        $erreur = 'Le motif est obligatoire.';
-    } elseif ($montant <= 0) {
-        $erreur = 'Le montant doit etre superieur a 0.';
-    } else {
-        $sql = "UPDATE demandes SET objet = ?, montant_demande = ?, devise = ?, statut = 'pending_superviseur', renvoyee = 1 WHERE id_demande = ? AND id_demandeur = ? AND statut = 'rejetee'";
-        $stmt = $pdo->prepare($sql);
-        if ($stmt->execute([$objet, $montant, $devise, $id_demande, $id_user])) {
-            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, justification, id_demande) VALUES (NOW(), ?, 'modification_chef', 'pending_superviseur', 'Demande modifiee apres rejet', ?)";
-            $stmt_log = $pdo->prepare($sql_log);
-            $stmt_log->execute([$id_user, $id_demande]);
-            $succes = 'Votre demande a ete modifiee et renvoyee au superviseur.';
-        } else {
-            $erreur = 'Erreur lors de la modification.';
-        }
-    }
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'valider') {
         $id_demande = $_POST['id_demande'] ?? 0;
-        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pendinglogistique', date_validation_chef = NOW() WHERE id_demande = ? AND statut = 'pending'");
+        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pendinglogistique', date_validation_superviseur = NOW() WHERE id_demande = ? AND statut = 'pending_superviseur'");
         if ($stmt->execute([$id_demande])) {
-            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'validation', 'pendinglogistique', ?)";
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'validation_superviseur', 'pendinglogistique', ?)";
             $stmt_log = $pdo->prepare($sql_log);
             $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
-            $succes = 'Demande validee avec succes.';
+            $succes = 'Demande validee et envoyee a la logistique.';
         } else {
             $erreur = 'Erreur lors de la validation.';
         }
@@ -155,9 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($justification)) {
             $erreur = 'La justification est obligatoire pour un rejet.';
         } else {
-            $stmt = $pdo->prepare("UPDATE demandes SET statut = 'rejetee', justification_rejet = ? WHERE id_demande = ? AND statut = 'pending'");
+            $stmt = $pdo->prepare("UPDATE demandes SET statut = 'rejetee', justification_rejet = ? WHERE id_demande = ? AND statut = 'pending_superviseur'");
             if ($stmt->execute([$justification, $id_demande])) {
-                $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, justification, id_demande) VALUES (NOW(), ?, 'rejet', 'rejetee', ?, ?)";
+                $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, justification, id_demande) VALUES (NOW(), ?, 'rejet_superviseur', 'rejetee', ?, ?)";
                 $stmt_log = $pdo->prepare($sql_log);
                 $stmt_log->execute([$_SESSION['id_utilisateur'], $justification, $id_demande]);
                 $succes = 'Demande rejetee.';
@@ -167,11 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // NOUVEAU : Fonctionnalité pour revenir sur un rejet
     if (isset($_POST['action']) && $_POST['action'] === 'reactiver') {
         $id_demande = $_POST['id_demande'] ?? 0;
-        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pending', renvoyee = 1 WHERE id_demande = ? AND statut = 'rejetee'");
+        $stmt = $pdo->prepare("UPDATE demandes SET statut = 'pending_superviseur', renvoyee = 1 WHERE id_demande = ? AND statut = 'rejetee'");
         if ($stmt->execute([$id_demande])) {
-            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'reactivation', 'pending', ?)";
+            $sql_log = "INSERT INTO logs (date_action, id_utilisateur, action, statut, id_demande) VALUES (NOW(), ?, 'reactivation_superviseur', 'pending_superviseur', ?)";
             $stmt_log = $pdo->prepare($sql_log);
             $stmt_log->execute([$_SESSION['id_utilisateur'], $id_demande]);
             $succes = 'Demande reactiver avec succes.';
@@ -181,71 +110,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$total_stmt = $pdo->prepare("
-    SELECT COUNT(*) 
-    FROM demandes d
-    JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-    WHERE u.id_departement = ? AND d.statut = 'pending'
-");
-$total_stmt->execute([$id_departement]);
+// MODIFICATION : On inclut les demandes rejetees dans la liste des demandes à valider pour pouvoir les réactiver
+$total_stmt = $pdo->prepare("SELECT COUNT(*) FROM demandes WHERE statut = 'pending_superviseur' OR statut = 'rejetee'");
+$total_stmt->execute();
 $total = $total_stmt->fetchColumn();
 $total_pages = ceil($total / $limit);
 
+// MODIFICATION : On récupère aussi les demandes rejetées
 $stmt = $pdo->prepare("
-    SELECT d.*, u.nom, u.prenom 
+    SELECT d.*, u.nom, u.prenom, dep.departement
     FROM demandes d
     JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-    WHERE u.id_departement = ? AND d.statut = 'pending'
+    LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+    WHERE d.statut = 'pending_superviseur' OR d.statut = 'rejetee'
     ORDER BY d.date_creation DESC
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
 ");
-$stmt->execute([$id_departement]);
+$stmt->execute();
 $demandes = $stmt->fetchAll();
 
-$total_mes_demandes_stmt = $pdo->prepare("SELECT COUNT(*) FROM demandes WHERE id_demandeur = ?");
-$total_mes_demandes_stmt->execute([$id_user]);
-$total_mes_demandes = $total_mes_demandes_stmt->fetchColumn();
-$total_pages_mes_demandes = ceil($total_mes_demandes / $limit);
-
-$stmt_mes_demandes = $pdo->prepare("
-    SELECT * FROM demandes 
-    WHERE id_demandeur = ? 
-    ORDER BY date_creation DESC 
-    LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
-");
-$stmt_mes_demandes->execute([$id_user]);
-$mes_demandes = $stmt_mes_demandes->fetchAll();
-
+// MODIFICATION : Historique - on exclut les demandes en attente de validation superviseur
 $total_histo_stmt = $pdo->prepare("
     SELECT COUNT(*) 
-    FROM demandes d
-    JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-    WHERE u.id_departement = ?
+    FROM demandes 
+    WHERE statut != 'pending_superviseur'
 ");
-$total_histo_stmt->execute([$id_departement]);
+$total_histo_stmt->execute();
 $total_histo = $total_histo_stmt->fetchColumn();
 $total_pages_histo = ceil($total_histo / $limit);
 
+// MODIFICATION : Historique - on exclut les demandes en attente de validation superviseur
 $stmt_histo = $pdo->prepare("
-    SELECT d.*, u.nom, u.prenom 
+    SELECT d.*, u.nom, u.prenom, dep.departement
     FROM demandes d
     JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-    WHERE u.id_departement = ? 
+    LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+    WHERE d.statut != 'pending_superviseur'
     ORDER BY d.date_creation DESC
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
 ");
-$stmt_histo->execute([$id_departement]);
+$stmt_histo->execute();
 $historique = $stmt_histo->fetchAll();
-
-$demande_modification = null;
-if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
-    $stmt = $pdo->prepare("SELECT * FROM demandes WHERE id_demande = ? AND id_demandeur = ? AND statut = 'rejetee'");
-    $stmt->execute([$_GET['modifier'], $id_user]);
-    $demande_modification = $stmt->fetch();
-    if ($demande_modification) {
-        $onglet = 'modifier';
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -253,7 +158,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chef</title>
+    <title>Superviseur</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -267,7 +172,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
         <div class="header-flow">
             <img src="../assets/Advans_Congo_Logo.svg" alt="svg advans">
         </div>
-        <h2>Bienvenue <span><?php echo $_SESSION['prenom']; ?></span></h2>
+        <h2>Bonjour <span><?php echo $_SESSION['prenom']; ?></span></h2>
         <a href="../logout.php"><button class="btn-deconnexion">Deconnexion</button></a>
     </div>
 
@@ -285,16 +190,6 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                             <i class="fas fa-history me-2"></i> Historique
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo $onglet == 'nouvelle' ? 'active' : ''; ?>" href="dashboard.php?onglet=nouvelle">
-                            <i class="fas fa-plus me-2"></i> Nouvelle demande
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo $onglet == 'mes_demandes' ? 'active' : ''; ?>" href="dashboard.php?onglet=mes_demandes">
-                            <i class="fas fa-list me-2"></i> Mes demandes
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -309,152 +204,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                     <script>setTimeout(function(){ var msg = document.getElementById('message-succes'); if(msg) msg.remove(); }, 3000);</script>
                 <?php endif; ?>
 
-                <?php if ($onglet == 'nouvelle'): ?>
-                    <div class="card">
-                        <h2>Nouvelle demande</h2>
-                        <form method="POST" enctype="multipart/form-data">
-                            <input type="hidden" name="action" value="nouvelle_demande">
-                            <div class="mb-3">
-                                <label class="form-label">Motif</label>
-                                <textarea name="objet" class="form-control" rows="3" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Montant</label>
-                                <div class="input-group">
-                                    <input type="number" name="montant" class="form-control" step="0.01" min="0.01" required>
-                                    <select name="devise" class="form-select" style="width: 100px;">
-                                        <option value="USD">USD</option>
-                                        <option value="CDF">CDF</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Piece jointe</label>
-                                <input type="file" name="piece_jointe" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                            </div>
-                            <button type="submit" class="btn-submit">Envoyer</button>
-                        </form>
-                    </div>
-
-                <?php elseif ($onglet == 'modifier' && $demande_modification): ?>
-                    <div class="card">
-                        <h2>Modifier ma demande</h2>
-                        <form method="POST">
-                            <input type="hidden" name="action" value="modifier_demande">
-                            <input type="hidden" name="id_demande" value="<?php echo $demande_modification['id_demande']; ?>">
-                            <div class="mb-3">
-                                <label class="form-label">Motif</label>
-                                <textarea name="objet" class="form-control" rows="3" required><?php echo htmlspecialchars($demande_modification['objet']); ?></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Montant</label>
-                                <div class="input-group">
-                                    <input type="number" name="montant" class="form-control" step="0.01" value="<?php echo $demande_modification['montant_demande']; ?>" required>
-                                    <select name="devise" class="form-select" style="width: 100px;">
-                                        <option value="USD" <?php echo ($demande_modification['devise'] ?? 'USD') == 'USD' ? 'selected' : ''; ?>>USD</option>
-                                        <option value="CDF" <?php echo ($demande_modification['devise'] ?? 'USD') == 'CDF' ? 'selected' : ''; ?>>CDF</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn-submit">Renvoyer</button>
-                            <a href="dashboard.php?onglet=mes_demandes" class="btn-secondary">Annuler</a>
-                        </form>
-                    </div>
-
-                <?php elseif ($onglet == 'mes_demandes'): ?>
-                    <div class="card">
-                        <h2>Mes demandes</h2>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Motif</th>
-                                        <th>Montant</th>
-                                        <th>Statut</th>
-                                        <th>Renvoyee</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="mesDemandesTableBody">
-                                    <?php foreach ($mes_demandes as $demande): ?>
-                                        <?php
-                                        $statut = $demande['statut'];
-                                        $libelle = getLibelleStatut($statut);
-                                        $badge = getBadgeClass($statut);
-                                        $id = $demande['id_demande'];
-                                        ?>
-                                        <tr id="mdemande-<?php echo $id; ?>">
-                                            <td><?php echo $id; ?></td>
-                                            <td>
-                                                <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal"
-                                                    data-id="<?php echo $id; ?>"
-                                                    data-objet="<?php echo htmlspecialchars($demande['objet']); ?>"
-                                                    data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
-                                                    data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
-                                                    data-demandeur="<?php echo $_SESSION['prenom'] . ' ' . $_SESSION['nom']; ?>"
-                                                    data-date="<?php echo $demande['date_creation']; ?>"
-                                                    data-statut="<?php echo $libelle; ?>"
-                                                    data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
-                                                    data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
-                                                    data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
-                                                    <i class="fas fa-eye me-1"></i> Voir
-                                                </button>
-                                            </td>
-                                            <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
-                                            <td class="statut-cell" id="mstatut-<?php echo $id; ?>">
-                                                <span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span>
-                                            </td>
-                                            <td>
-                                                <?php if ($demande['renvoyee'] == 1): ?>
-                                                    <span class="badge bg-warning text-dark">Oui</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-secondary">Non</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?php echo $demande['date_creation']; ?></td>
-                                            <td class="actions-cell" id="mactions-<?php echo $id; ?>">
-                                                <?php if ($statut == 'rejetee'): ?>
-                                                    <a href="dashboard.php?onglet=modifier&modifier=<?php echo $id; ?>" class="btn-warning-sm">Modifier</a>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php if ($total_pages_mes_demandes > 1): ?>
-                        <div class="pagination-container">
-                            <div class="pagination-info">
-                                Page <?php echo $page; ?> sur <?php echo $total_pages_mes_demandes; ?> (<?php echo $total_mes_demandes; ?> demandes)
-                            </div>
-                            <ul class="pagination">
-                                <?php if ($page > 1): ?>
-                                    <li><a href="?onglet=mes_demandes&page=<?php echo $page - 1; ?>">« Précédent</a></li>
-                                <?php else: ?>
-                                    <li class="disabled"><span>« Précédent</span></li>
-                                <?php endif; ?>
-
-                                <?php for ($i = 1; $i <= $total_pages_mes_demandes; $i++): ?>
-                                    <?php if ($i == $page): ?>
-                                        <li class="active"><span><?php echo $i; ?></span></li>
-                                    <?php else: ?>
-                                        <li><a href="?onglet=mes_demandes&page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
-                                    <?php endif; ?>
-                                <?php endfor; ?>
-
-                                <?php if ($page < $total_pages_mes_demandes): ?>
-                                    <li><a href="?onglet=mes_demandes&page=<?php echo $page + 1; ?>">Suivant »</a></li>
-                                <?php else: ?>
-                                    <li class="disabled"><span>Suivant »</span></li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-
-                <?php elseif ($onglet == 'historique'): ?>
+                <?php if ($onglet == 'historique'): ?>
                     <div class="card">
                         <h2>Historique des demandes</h2>
                         <div class="table-responsive">
@@ -463,6 +213,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                     <tr>
                                         <th>ID</th>
                                         <th>Demandeur</th>
+                                        <th>Departement</th>
                                         <th>Motif</th>
                                         <th>Montant</th>
                                         <th>Statut</th>
@@ -480,6 +231,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                         <tr>
                                             <td><?php echo $demande['id_demande']; ?></td>
                                             <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
+                                            <td><?php echo $demande['departement'] ?? '-'; ?></td>
                                             <td><?php echo htmlspecialchars($demande['objet']); ?></td>
                                             <td><?php echo number_format($demande['montant_demande'], 2); ?> <?php echo $demande['devise'] ?? 'USD'; ?></td>
                                             <td><span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span></td>
@@ -491,6 +243,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                     data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
                                                     data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                                                     data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
+                                                    data-departement="<?php echo $demande['departement'] ?? '-'; ?>"
                                                     data-date="<?php echo $demande['date_creation']; ?>"
                                                     data-statut="<?php echo $libelle; ?>"
                                                     data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
@@ -536,13 +289,14 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
 
                 <?php else: ?>
                     <div class="card">
-                        <h2>Demandes à valider</h2>
+                        <h2>Demandes des chefs à valider</h2>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
                                         <th>Demandeur</th>
+                                        <th>Departement</th>
                                         <th>Motif</th>
                                         <th>Montant</th>
                                         <th>Statut</th>
@@ -560,6 +314,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                         <tr id="demande-<?php echo $id; ?>">
                                             <td><?php echo $id; ?></td>
                                             <td><?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?></td>
+                                            <td><?php echo $demande['departement'] ?? '-'; ?></td>
                                             <td>
                                                 <button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" 
                                                     data-id="<?php echo $id; ?>"
@@ -567,9 +322,9 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                     data-montant="<?php echo number_format($demande['montant_demande'], 2); ?>"
                                                     data-devise="<?php echo $demande['devise'] ?? 'USD'; ?>"
                                                     data-demandeur="<?php echo htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']); ?>"
+                                                    data-departement="<?php echo $demande['departement'] ?? '-'; ?>"
                                                     data-date="<?php echo $demande['date_creation']; ?>"
                                                     data-statut="<?php echo $libelle; ?>"
-                                                    data-renvoyee="<?php echo $demande['renvoyee'] == 1 ? 'Oui' : 'Non'; ?>"
                                                     data-justification="<?php echo htmlspecialchars($demande['justification_rejet'] ?? ''); ?>"
                                                     data-piece="<?php echo $demande['piece_jointe'] ?? ''; ?>">
                                                     <i class="fas fa-eye me-1"></i> Voir
@@ -580,7 +335,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                                                 <span class="badge <?php echo $badge; ?>"><?php echo $libelle; ?></span>
                                             </td>
                                             <td class="actions-cell" id="actions-<?php echo $id; ?>">
-                                                <?php if ($statut == 'pending'): ?>
+                                                <?php if ($statut == 'pending_superviseur'): ?>
                                                     <form method="POST" style="display:inline-block;">
                                                         <input type="hidden" name="action" value="valider">
                                                         <input type="hidden" name="id_demande" value="<?php echo $id; ?>">
@@ -670,10 +425,10 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                 <div class="modal-body">
                     <p><strong>ID :</strong> <span id="detail_id"></span></p>
                     <p><strong>Demandeur :</strong> <span id="detail_demandeur"></span></p>
+                    <p><strong>Departement :</strong> <span id="detail_departement"></span></p>
                     <p><strong>Montant :</strong> <span id="detail_montant"></span> <span id="detail_devise"></span></p>
-                    <p><strong>Statut :</strong> <span id="detail_statut"></span></p>
-                    <p><strong>Renvoyee apres rejet :</strong> <span id="detail_renvoyee"></span></p>
                     <p><strong>Date :</strong> <span id="detail_date"></span></p>
+                    <p><strong>Statut :</strong> <span id="detail_statut"></span></p>
                     <p><strong>Motif :</strong></p>
                     <div class="border p-2 rounded bg-light" id="detail_objet" style="white-space: pre-wrap;"></div>
                     <p class="mt-2"><strong>Justification rejet :</strong></p>
@@ -693,7 +448,7 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
         function refreshDemandes() {
             var page = <?php echo $page; ?>;
             $.ajax({
-                url: '../refresh.php?action=demandes&page=' + page,
+                url: '../refresh.php?action=superviseur&page=' + page,
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
@@ -710,12 +465,14 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
                             var newRow = '<tr id="demande-' + item.id + '">' +
                                 '<td>' + item.id + '</td>' +
                                 '<td>' + item.demandeur + '</td>' +
+                                '<td>' + item.departement + '</td>' +
                                 '<td><button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" ' +
                                 'data-id="' + item.id + '" data-objet="' + item.objet + '" data-montant="' + item.montant + '" ' +
                                 'data-devise="' + item.devise + '" data-demandeur="' + item.demandeur + '" ' +
-                                'data-date="' + item.date + '" data-statut="' + item.libelle + '" ' +
-                                'data-renvoyee="' + item.renvoyee + '" data-justification="' + item.justification + '" ' +
-                                'data-piece="' + item.piece + '"><i class="fas fa-eye me-1"></i> Voir</button></td>' +
+                                'data-departement="' + item.departement + '" data-date="' + item.date + '" ' +
+                                'data-statut="' + item.libelle + '" data-justification="' + item.justification + '" ' +
+                                'data-piece="' + item.piece + '">' +
+                                '<i class="fas fa-eye me-1"></i> Voir</button></td>' +
                                 '<td>' + item.montant + ' ' + item.devise + '</td>' +
                                 '<td class="statut-cell" id="statut-' + item.id + '">' + item.statut_html + '</td>' +
                                 '<td class="actions-cell" id="actions-' + item.id + '">' + item.actions_html + '</td>' +
@@ -734,51 +491,6 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
         }
         setInterval(refreshDemandes, 5000);
 
-        function refreshMesDemandes() {
-            var page = <?php echo $page; ?>;
-            $.ajax({
-                url: '../refresh.php?action=mes_demandes_chef&page=' + page,
-                type: 'GET',
-                dataType: 'json',
-                success: function(data) {
-                    if (data.error) {
-                        return;
-                    }
-                    var idsActifs = [];
-                    $.each(data, function(index, item) {
-                        idsActifs.push(item.id);
-                        if ($('#mstatut-' + item.id).length > 0) {
-                            $('#mstatut-' + item.id).html(item.statut_html);
-                            $('#mactions-' + item.id).html(item.actions_html);
-                        } else {
-                            var newRow = '<tr id="mdemande-' + item.id + '">' +
-                                '<td>' + item.id + '</td>' +
-                                '<td><button type="button" class="btn-detail" data-bs-toggle="modal" data-bs-target="#detailModal" ' +
-                                'data-id="' + item.id + '" data-objet="' + item.objet + '" data-montant="' + item.montant + '" ' +
-                                'data-devise="' + item.devise + '" data-demandeur="' + item.demandeur + '" ' +
-                                'data-date="' + item.date + '" data-statut="' + item.libelle + '" ' +
-                                'data-renvoyee="' + item.renvoyee + '" data-justification="' + item.justification + '" ' +
-                                'data-piece="' + item.piece + '"><i class="fas fa-eye me-1"></i> Voir</button></td>' +
-                                '<td>' + item.montant + ' ' + item.devise + '</td>' +
-                                '<td class="statut-cell" id="mstatut-' + item.id + '">' + item.statut_html + '</td>' +
-                                '<td>' + item.renvoyee_badge + '</td>' +
-                                '<td>' + item.date + '</td>' +
-                                '<td class="actions-cell" id="mactions-' + item.id + '">' + item.actions_html + '</td>' +
-                                '</tr>';
-                            $('#mesDemandesTableBody').append(newRow);
-                        }
-                    });
-                    $('tr[id^="mdemande-"]').each(function() {
-                        var id = $(this).attr('id').replace('mdemande-', '');
-                        if ($.inArray(parseInt(id), idsActifs) === -1) {
-                            $(this).remove();
-                        }
-                    });
-                }
-            });
-        }
-        setInterval(refreshMesDemandes, 5000);
-
         const rejetModal = document.getElementById('rejetModal');
         rejetModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -791,17 +503,17 @@ if (isset($_GET['modifier']) && is_numeric($_GET['modifier'])) {
             const button = event.relatedTarget;
             document.getElementById('detail_id').innerText = button.getAttribute('data-id');
             document.getElementById('detail_demandeur').innerText = button.getAttribute('data-demandeur');
+            document.getElementById('detail_departement').innerText = button.getAttribute('data-departement');
             document.getElementById('detail_montant').innerText = button.getAttribute('data-montant');
             document.getElementById('detail_devise').innerText = button.getAttribute('data-devise');
             document.getElementById('detail_date').innerText = button.getAttribute('data-date');
             document.getElementById('detail_statut').innerText = button.getAttribute('data-statut');
-            document.getElementById('detail_renvoyee').innerText = button.getAttribute('data-renvoyee');
             document.getElementById('detail_objet').innerText = button.getAttribute('data-objet');
             const justification = button.getAttribute('data-justification');
             document.getElementById('detail_justification').innerText = justification || 'Aucune';
             const piece = button.getAttribute('data-piece');
             if (piece) {
-                document.getElementById('detail_piece').innerHTML = '<a href="../' + piece + '" target="_blank" class="btn btn-sm btn-outline-primary">Telecharger la piece jointe</a>';
+                document.getElementById('detail_piece').innerHTML = '<a href="../' + piece + '" target="_blank" class="btn btn-sm btn-outline-primary">Telecharger</a>';
             } else {
                 document.getElementById('detail_piece').innerHTML = 'Aucune piece jointe';
             }

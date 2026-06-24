@@ -483,6 +483,16 @@ tr:hover {
     color: #008C45;
 }
 
+.badge-superviseur {
+    background: #6f42c1;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
 .pagination li a:hover {
     background: #008C45;
     color: white;

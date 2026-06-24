@@ -9,6 +9,7 @@ if (!isset($_SESSION['id_utilisateur'])) {
 function getLibelleStatut($statut) {
     switch ($statut) {
         case 'pending': return 'Attente de validation';
+        case 'pending_superviseur': return 'Attente validation superviseur';
         case 'pendinglogistique': return 'Attente facture';
         case 'facturee': return 'Attente de paiement';
         case 'confirmee': return 'Décaissée';
@@ -21,6 +22,7 @@ function getLibelleStatut($statut) {
 function getBadgeClass($statut) {
     switch ($statut) {
         case 'pending': return 'badge-attente';
+        case 'pending_superviseur': return 'badge-superviseur';
         case 'pendinglogistique': return 'badge-logistique';
         case 'facturee': return 'badge-facturee';
         case 'confirmee': return 'badge-succes';
@@ -55,6 +57,14 @@ function renderActionsDemandeur($statut, $id, $page) {
     return $html;
 }
 
+function renderActionsChefMesDemandes($statut, $id) {
+    $html = '';
+    if ($statut == 'rejetee') {
+        $html .= '<a href="dashboard.php?onglet=modifier&modifier=' . $id . '" class="btn-warning-sm">Modifier</a>';
+    }
+    return $html;
+}
+
 function renderActionsChef($statut, $id) {
     $html = '';
     if ($statut == 'pending') {
@@ -83,10 +93,25 @@ function renderActionsLogistique($statut, $id) {
                     <button type="submit" class="btn-facturer">Facturer</button>
                   </form>';
     } elseif ($statut == 'facturee') {
+        $html .= '<a href="facture.php?id=' . $id . '&action=decaisser" class="btn-decaisser">Decaisser</a>';
+    }
+    return $html;
+}
+
+function renderActionsSuperviseur($statut, $id) {
+    $html = '';
+    if ($statut == 'pending_superviseur') {
         $html .= '<form method="POST" style="display:inline-block;">
-                    <input type="hidden" name="action" value="decaisser">
+                    <input type="hidden" name="action" value="valider">
                     <input type="hidden" name="id_demande" value="' . $id . '">
-                    <button type="submit" class="btn-decaisser">Decaisser</button>
+                    <button type="submit" class="btn-success-sm">Valider</button>
+                  </form>
+                  <button type="button" class="btn-danger-sm" data-bs-toggle="modal" data-bs-target="#rejetModal" data-id="' . $id . '">Rejeter</button>';
+    } elseif ($statut == 'rejetee') {
+        $html .= '<form method="POST" style="display:inline-block;">
+                    <input type="hidden" name="action" value="reactiver">
+                    <input type="hidden" name="id_demande" value="' . $id . '">
+                    <button type="submit" class="btn-warning-sm">Revenir sur rejet</button>
                   </form>';
     }
     return $html;
@@ -98,7 +123,7 @@ $page = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
 $limit = 5;
 $offset = ($page - 1) * $limit;
 
-$actions_autorisees = ['mes_demandes', 'demandes', 'historique', 'historique_chef'];
+$actions_autorisees = ['mes_demandes', 'demandes', 'historique', 'historique_chef', 'superviseur', 'superviseur_historique', 'mes_demandes_chef'];
 if (!in_array($action, $actions_autorisees)) {
     exit();
 }
@@ -178,7 +203,7 @@ try {
             SELECT d.id_demande, d.statut
             FROM demandes d
             JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
-            WHERE u.id_departement = ?
+            WHERE u.id_departement = ? AND d.statut != 'pending_superviseur'
             ORDER BY d.date_creation DESC
             LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
         ";
@@ -192,6 +217,40 @@ try {
             $response[] = array(
                 'id' => $id,
                 'statut_html' => renderStatut($statut)
+            );
+        }
+        
+    } elseif ($id_role == 2 && $action == 'mes_demandes_chef') {
+        $id_user = $_SESSION['id_utilisateur'];
+        
+        $sql = "
+            SELECT * FROM demandes 
+            WHERE id_demandeur = ? 
+            ORDER BY date_creation DESC 
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$id_user]);
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $libelle = getLibelleStatut($statut);
+            $response[] = array(
+                'id' => $id,
+                'objet' => htmlspecialchars($demande['objet']),
+                'montant' => number_format($demande['montant_demande'], 2),
+                'devise' => $demande['devise'] ?? 'USD',
+                'demandeur' => $_SESSION['prenom'] . ' ' . $_SESSION['nom'],
+                'date' => $demande['date_creation'],
+                'libelle' => $libelle,
+                'renvoyee' => $demande['renvoyee'] == 1 ? 'Oui' : 'Non',
+                'renvoyee_badge' => renderRenvoyee($demande['renvoyee']),
+                'justification' => htmlspecialchars($demande['justification_rejet'] ?? ''),
+                'piece' => $demande['piece_jointe'] ?? '',
+                'statut_html' => renderStatut($statut),
+                'actions_html' => renderActionsChefMesDemandes($statut, $id)
             );
         }
         
@@ -236,6 +295,63 @@ try {
             LEFT JOIN departements dep ON u.id_departement = dep.id_departement
             WHERE d.statut = 'confirmee'
             ORDER BY d.date_decaissement DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $response[] = array(
+                'id' => $id,
+                'statut_html' => renderStatut($statut)
+            );
+        }
+        
+    } elseif ($id_role == 5 && $action == 'superviseur') {
+        $sql = "
+            SELECT d.id_demande, d.objet, d.montant_demande, d.devise,
+                   d.date_creation, d.statut, d.piece_jointe, d.justification_rejet,
+                   u.nom, u.prenom, dep.departement
+            FROM demandes d
+            JOIN utilisateurs u ON d.id_demandeur = u.id_utilisateur
+            LEFT JOIN departements dep ON u.id_departement = dep.id_departement
+            WHERE d.statut = 'pending_superviseur' OR d.statut = 'rejetee'
+            ORDER BY d.date_creation DESC
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $demandes = $stmt->fetchAll();
+        
+        foreach ($demandes as $demande) {
+            $id = $demande['id_demande'];
+            $statut = $demande['statut'];
+            $libelle = getLibelleStatut($statut);
+            $response[] = array(
+                'id' => $id,
+                'demandeur' => htmlspecialchars($demande['prenom'] . ' ' . $demande['nom']),
+                'departement' => $demande['departement'] ?? '-',
+                'objet' => htmlspecialchars($demande['objet']),
+                'montant' => number_format($demande['montant_demande'], 2),
+                'devise' => $demande['devise'] ?? 'USD',
+                'date' => $demande['date_creation'],
+                'libelle' => $libelle,
+                'justification' => htmlspecialchars($demande['justification_rejet'] ?? ''),
+                'piece' => $demande['piece_jointe'] ?? '',
+                'statut_html' => renderStatut($statut),
+                'actions_html' => renderActionsSuperviseur($statut, $id)
+            );
+        }
+        
+    } elseif ($id_role == 5 && $action == 'superviseur_historique') {
+        $sql = "
+            SELECT d.id_demande, d.statut
+            FROM demandes d
+            WHERE d.statut != 'pending_superviseur'
+            ORDER BY d.date_creation DESC
             LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
         ";
         $stmt = $pdo->prepare($sql);

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     2 => 'chef/dashboard.php',
                     3 => 'logistique/dashboard.php',
                     4 => 'dashboard.php',
+                    5 => 'superviseur/dashboard.php',
                 ];
                 $redirection = $routes[$role] ?? 'dashboard.php';
                 header('Location: ' . $redirection);
