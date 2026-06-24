@@ -67,25 +67,21 @@ if ($total_pages <= 1) {
     exit();
 }
 
-$start_page = max(1, $current_page);
-$end_page = min($total_pages, $current_page + 3);
+$start_page = max(1, $current_page - 1);
+$end_page = min($total_pages, $current_page + 1);
 
-if ($current_page > $total_pages - 3) {
+if ($current_page <= 2) {
+    $start_page = 1;
+    $end_page = min(3, $total_pages);
+}
+
+if ($current_page >= $total_pages - 1) {
+    $start_page = max(1, $total_pages - 2);
     $end_page = $total_pages;
-    $start_page = max(1, $total_pages - 3);
 }
 
-if ($start_page > 1) {
-    $show_first = true;
-} else {
-    $show_first = false;
-}
-
-if ($end_page < $total_pages) {
-    $show_last = true;
-} else {
-    $show_last = false;
-}
+$show_first = ($start_page > 1);
+$show_last = ($end_page < $total_pages);
 ?>
 <div class="pagination-container">
     <div class="pagination-info">
